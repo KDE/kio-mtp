@@ -1,0 +1,6 @@
+[Desktop Entry]
+Icon=multimedia-device
+Name=MTP Device
+Open=false
+Type=Link
+URL=mtp:/

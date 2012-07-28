@@ -1,0 +1,10 @@
+**********************
+* KIO-Client for KDE *
+**********************
+
+Requires mtpd for caching of devices. Uses DBus-Calls to mtpd for all functions.
+
+Everything tested with a Galaxy Nexus
+
+What works:
+    - Listing Devices, Storages and Files

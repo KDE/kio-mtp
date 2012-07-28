@@ -1,0 +1,15 @@
+[Protocol]
+exec=kio_mtp
+protocol=mtp
+input=none
+output=filesystem
+listing=Name,Type,Size,Access
+reading=false
+writing=false
+makedir=false
+deleting=false
+opening=false
+moving=false
+copyFromFile=false
+copyToFile=false
+Icon=network-workgroup
