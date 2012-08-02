@@ -50,6 +50,7 @@ private:
     org::mtpd *mtpdInterface;
     
     void getEntry(const QString& path, UDSEntry& entry);
+    qint32 currentTransaction;
     
 public:
     /*
@@ -63,10 +64,20 @@ public:
     virtual void mimetype(const KUrl& url);
 //     virtual void get( const KUrl& url );
 //     virtual void put(const KUrl& url, int permissions, JobFlags flags);
-//     virtual void copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags);
+    virtual void copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags);
 //     virtual void mkdir(const KUrl& url, int permissions);
 //     virtual void del(const KUrl& url, bool isfile);
 //     virtual void rename(const KUrl& src, const KUrl& dest, JobFlags flags);
+    
+signals:
+    void breakLoop();
+    
+private slots:
+    void slotProgress(int transactionID, qulonglong sentBytes, qulonglong totalBytes);
+    void slotFinished(int transactionID);
+    
+private:
+    void waitLoop();
 };
 
 #endif  //#endif KIO_MTP_H

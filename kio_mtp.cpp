@@ -31,8 +31,10 @@
 extern "C"
 int KDE_EXPORT kdemain( int argc, char **argv )
 {
-    kDebug(KIO_MTP) << "MTPSlave::kdemain()";
     KComponentData instance( "kio_mtp" );
+    
+    KGlobal::locale();
+    QCoreApplication app( argc, argv );
     
     if (argc != 4)
     {
@@ -53,12 +55,22 @@ MTPSlave::MTPSlave(const QByteArray& pool, const QByteArray& app)
     
     kDebug(KIO_MTP) << pool << app << meta << "" << reg;
     
-    //
+    currentTransaction == 0;
     mtpdInterface = new org::mtpd("org.mtpd", "/filesystem", QDBusConnection::sessionBus(), this);
+    
+    infoMessage("Currently indexind...");
 }
 
 MTPSlave::~MTPSlave()
 {
+}
+
+void MTPSlave::waitLoop()
+{
+    QEventLoop loop;
+    connect( this, SIGNAL( breakLoop() ),
+             &loop, SLOT( quit() ) );
+    loop.exec();
 }
 
 void MTPSlave::getEntry(const QString& path, UDSEntry &entry)
@@ -155,15 +167,84 @@ void MTPSlave::stat( const KUrl& url )
 {
     kDebug(KIO_MTP) << "stat() [" << url << "]";
     
-    QString path = url.path();
-    
     UDSEntry entry;
-    getEntry(path, entry);
-    listEntry(entry, false);
-    
-    entry.clear();
-    listEntry(entry, true);
+    getEntry(url.path(), entry);
+    statEntry(entry);
     
     finished();
 }
 
+void MTPSlave::copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags)
+{
+    // On device
+    if (src.protocol() == "mtp" && dest.protocol() == "mtp")
+    {
+        
+    }
+    // To device
+    if (src.protocol() == "file" && dest.protocol() == "mtp")
+    {
+        kDebug(KIO_MTP) << "Copy file " << src.path() << " from filesystem to device: " << dest.path();
+        
+        QDBusPendingReply<int> reply = mtpdInterface->copyFileToDevice(src.path(), dest.path());
+        reply.waitForFinished();
+        
+        if (reply.isValid())
+        {
+            // set transaction ID to the transmitted value and connect to signals so we can receive updates
+            currentTransaction = reply.value();
+            connect ( mtpdInterface, SIGNAL ( transactionProgress ( int, qulonglong, qulonglong ) ),
+                      this, SLOT ( slotProgress ( int, qulonglong, qulonglong ) ) );
+            connect ( mtpdInterface, SIGNAL ( transactionFinished ( int ) ),
+                      this, SLOT ( slotFinished ( int ) ) );
+            waitLoop();
+        }
+    }
+    // From device
+    if (src.protocol() == "mtp" && dest.protocol() == "file")
+    {
+        kDebug(KIO_MTP) << "Copy file " << src.path() << " from device to filesystem: " << dest.path();
+        
+        QDBusPendingReply<int> reply = mtpdInterface->copyFileFromDevice(src.path(), dest.path());
+        reply.waitForFinished();
+        
+        if (reply.isValid())
+        {
+            // set transaction ID to the transmitted value and connect to signals so we can receive updates
+            currentTransaction = reply.value();
+            connect ( mtpdInterface, SIGNAL ( transactionProgress ( int, qulonglong, qulonglong ) ),
+                      this, SLOT ( slotProgress ( int, qulonglong, qulonglong ) ) );
+            connect ( mtpdInterface, SIGNAL ( transactionFinished ( int ) ),
+                      this, SLOT ( slotFinished ( int ) ) );
+            waitLoop();
+        }
+    }
+}
+
+void MTPSlave::slotProgress(int transactionID, qulonglong sentBytes, qulonglong totalBytes)
+{
+    kDebug(KIO_MTP) << "Received Update for transactionID=" << transactionID << "(Our ID=" << currentTransaction << ")";
+    
+    if (transactionID == currentTransaction)
+    {
+        processedSize(sentBytes);
+    }
+}
+
+void MTPSlave::slotFinished(int transactionID)
+{
+    if (transactionID == currentTransaction)
+    {
+        // reset transaction id and disconnect signals so we don't reveive updates
+        currentTransaction == 0;
+        disconnect ( mtpdInterface, SIGNAL ( transactionProgress ( int, qulonglong, qulonglong ) ),
+                  this, SLOT ( slotProgress ( int, qulonglong, qulonglong ) ) );
+        disconnect ( mtpdInterface, SIGNAL ( transactionFinished ( int ) ),
+                  this, SLOT ( slotFinished ( int ) ) );
+        
+        emit breakLoop();
+        finished();
+    }
+}
+
+#include "kio_mtp.moc"
