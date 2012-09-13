@@ -30,21 +30,23 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <libmtp.h>
+
 
 extern "C"
 int KDE_EXPORT kdemain( int argc, char **argv )
 {
     KComponentData instance( "kio_mtp" );
-    
+
     KGlobal::locale();
     QCoreApplication app( argc, argv );
-    
+
     if (argc != 4)
     {
         fprintf( stderr, "Usage: kio_mtp protocol domain-socket1 domain-socket2\n");
         exit( -1 );
     }
-    
+
     MTPSlave slave( argv[2], argv[3] );
     slave.dispatchLoop();
     return 0;
@@ -53,279 +55,247 @@ int KDE_EXPORT kdemain( int argc, char **argv )
 MTPSlave::MTPSlave(const QByteArray& pool, const QByteArray& app)
     : SlaveBase( "mtp", pool, app )
 {
-    int meta = qRegisterMetaType<StringMap>();
-    int reg = qDBusRegisterMetaType<StringMap>();
-    
-    kDebug(KIO_MTP) << pool << app << meta << "" << reg;
-    
-    currentTransaction = 0;
-    mtpdInterface = new org::mtpd(org::mtpd::staticInterfaceName(), "/filesystem", QDBusConnection::sessionBus(), this);
-    
-    infoMessage("Currently indexind...");
+    kDebug(KIO_MTP) << "Slave started";
+
+    LIBMTP_Init();
+
+    kDebug(KIO_MTP) << "LIBMTP initialized";
 }
 
 MTPSlave::~MTPSlave()
 {
 }
 
-void MTPSlave::waitLoop()
+void getUDSEntry(UDSEntry &entry, const LIBMTP_file_t *file)
 {
-    QEventLoop loop;
-    connect( this, SIGNAL( breakLoop() ),
-             &loop, SLOT( quit() ) );
-    loop.exec();
 }
 
-void MTPSlave::getEntry(const QString& path, UDSEntry &entry)
+QMap<QString, LIBMTP_raw_device_t*> getRawDevices()
 {
-    QDBusPendingReply<QString, qulonglong, QString, qulonglong> reply = mtpdInterface->info(path);
-    reply.waitForFinished();
-    
-    if (reply.isValid())
-    {
-        entry.insert( UDSEntry::UDS_NAME, reply.argumentAt<0>() );
-        
-        QString originalmimetype = reply.argumentAt<2>();
-        QString mimetype = originalmimetype;
-        mode_t access = S_IRUSR | S_IRGRP | S_IROTH;
-        
-        // TODO more mimetypes for different devices, e.g. phone, tablet, musicplayer
-        if (originalmimetype == "mtpd/device")
-        {
-            mimetype = "inode/directory";
-            entry.insert(UDSEntry::UDS_ICON_NAME, QString("multimedia-player"));
-            entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
-            access |= S_IXUSR | S_IXGRP | S_IXOTH;
-        }
-        else if (originalmimetype == "mtpd/storage")
-        {
-            mimetype = "inode/directory";
-            entry.insert(UDSEntry::UDS_ICON_NAME, QString("drive-removable-media"));
-            entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
-            access |= S_IXUSR | S_IXGRP | S_IXOTH;
-        }
-        else 
-        {
-            if (mimetype == "inode/directory")
+    kDebug(KIO_MTP) << "getRawDevices()";
+
+    LIBMTP_raw_device_t *rawdevices;
+    int numrawdevices;
+    LIBMTP_error_number_t err;
+
+    QMap<QString, LIBMTP_raw_device_t*> devices;
+
+    err = LIBMTP_Detect_Raw_Devices(&rawdevices, &numrawdevices);
+    switch(err) {
+        case LIBMTP_ERROR_CONNECTING:
+//             WARNING("There has been an error connecting to the devices");
+            break;
+        case LIBMTP_ERROR_MEMORY_ALLOCATION:
+//             WARNING("Encountered a Memory Allocation Error");
+            break;
+        case LIBMTP_ERROR_NONE:
             {
-                access = S_IRWXU | S_IRWXG | S_IRWXO;
-                entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
+                for (int i = 0; i < numrawdevices; i++)
+                {
+                    LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached( &rawdevices[i] );
+
+                    char *deviceName = LIBMTP_Get_Friendlyname( device );
+                    char *deviceModel = LIBMTP_Get_Modelname( device );
+
+                    // prefer friendly devicename over model
+                    QString name;
+                    if ( !deviceName )
+                        name = QString::fromUtf8(deviceModel);
+                    else
+                        name = QString::fromUtf8(deviceName);
+
+                    devices.insert(name, &rawdevices[i]);
+
+                    LIBMTP_Release_Device(device);
+                }
             }
+            break;
+        case LIBMTP_ERROR_GENERAL:
+        default:
+//             WARNING("Unknown connection error");
+            break;
+    }
+    return devices;
+}
+
+QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages( LIBMTP_mtpdevice_t *device )
+{
+    kDebug(KIO_MTP) << "getDevicestorages()";
+
+    QMap<QString, LIBMTP_devicestorage_t*> storages;
+    if (device != NULL)
+    {
+        for (LIBMTP_devicestorage_t* storage = device->storage; storage != NULL; storage = storage->next)
+        {
+            char *storageIdentifier = storage->VolumeIdentifier;
+            char *storageDescription = storage->StorageDescription;
+
+            QString storagename;
+            if ( !storageIdentifier )
+                storagename = QString::fromUtf8( storageDescription );
             else
-            {
-                access |= S_IWUSR | S_IWGRP | S_IWOTH;
-                entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFREG );
-                entry.insert( UDSEntry::UDS_SIZE, reply.argumentAt<1>());
-            }
-            
-            qulonglong modificationdate = reply.argumentAt<3>();
-            entry.insert( UDSEntry::UDS_ACCESS_TIME, modificationdate);
-            entry.insert( UDSEntry::UDS_MODIFICATION_TIME, modificationdate);
-            entry.insert( UDSEntry::UDS_CREATION_TIME, modificationdate);
+                storagename = QString::fromUtf8( storageIdentifier );
+
+            kDebug(KIO_MTP) << "found storage" << storagename;
+
+            storages.insert( storagename, storage );
         }
-        
-        entry.insert( UDSEntry::UDS_ACCESS, access );
-        entry.insert( UDSEntry::UDS_MIME_TYPE, mimetype );
     }
-    else
+
+    return storages;
+}
+
+QMap<QString, LIBMTP_file_t*> getFiles( LIBMTP_mtpdevice_t *device, LIBMTP_devicestorage_t *storage, uint32_t parent_id = 0xFFFFFFFF )
+{
+    kDebug(KIO_MTP) << "getFiles() for parent" << parent_id;
+
+    QMap<QString, LIBMTP_file_t*> files;
+
+    LIBMTP_file_t *file = LIBMTP_Get_Files_And_Folders(device, storage->id, parent_id);
+    for (; file != NULL; file = file->next)
     {
-        QDBusError error = reply.error();
-        kError(KIO_MTP) << error.name();
-        kError(KIO_MTP) << error.message();
+        files.insert(QString::fromUtf8(file->filename), file);
+//         kDebug(KIO_MTP) << "found file" << file->filename;
     }
+
+    return files;
 }
 
 void MTPSlave::listDir( const KUrl& url )
 {
-    kDebug(KIO_MTP) << "listDir() [" << url << "]";
-    
-    const QString path = url.path();
-    
-    QDBusPendingReply<StringMap> reply = mtpdInterface->list(path);
-    reply.waitForFinished();
-    
+    QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
+
+    kDebug(KIO_MTP) << "listDir()" << url.path() << pathItems.size();
+
     UDSEntry entry;
-    
-    if (reply.isValid())
+
+    QMap<QString, LIBMTP_raw_device_t*> devices = getRawDevices();
+
+    // list devices
+    if (pathItems.size() == 0)
     {
-        StringMap map = reply.value();
-        
-        QList<QString> keys = map.keys();
-        
-        foreach (const QString &name, keys)
+        kDebug(KIO_MTP) << "Root directory, listing devices";
+
+        foreach ( const QString &deviceName, devices.keys() )
         {
-            QString childPath = QString(path).append("/").append(name);
-            getEntry(childPath, entry);
+            // list device
+            entry.insert( UDSEntry::UDS_NAME, deviceName );
+            entry.insert( UDSEntry::UDS_ICON_NAME, QString( "multimedia-player" ) );
+            entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
+            entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
+            entry.insert( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+
             listEntry(entry, false);
             entry.clear();
         }
     }
-    else
+    // traverse into device
+    else if ( devices.contains( pathItems.at(0) ) )
     {
-        QDBusError error = reply.error();
-        kError(KIO_MTP) << error.name();
-        kError(KIO_MTP) << error.message();
+        LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached( devices.value( pathItems.at(0) ) );
+
+        QMap<QString, LIBMTP_devicestorage_t*> storages = getDevicestorages( device );
+
+        // list storages
+        if ( pathItems.size() == 1)
+        {
+            kDebug(KIO_MTP) << "Listing storages for device " << pathItems.at(0);
+
+            foreach (const QString &storageName, storages.keys())
+            {
+                kDebug(KIO_MTP) << "Showing " << storageName;
+
+                // list storage
+                entry.insert( UDSEntry::UDS_NAME, storageName );
+                entry.insert( UDSEntry::UDS_ICON_NAME, QString( "drive-removable-media" ) );
+                entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
+                entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
+                entry.insert( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+
+                listEntry(entry, false);
+                entry.clear();
+            }
+        }
+        // traverse into storage
+        else if ( storages.contains( pathItems.at(1) ) )
+        {
+            LIBMTP_devicestorage_t *storage = storages.value( pathItems.at(1) );
+
+            int currentLevel = 2, currentParent = 0xFFFFFFFF;
+
+            QMap<QString, LIBMTP_file_t*> files = getFiles( device, storage, currentParent );
+
+            // traverse further while depth not reached
+            while ( currentLevel < pathItems.size() )
+            {
+                if ( files.contains( pathItems.at(currentLevel) ) )
+                {
+                    // set new parent and get filelisting
+                    currentParent = files.value( pathItems.at( currentLevel++ ) )->item_id;
+                    files = getFiles( device, storage, currentParent );
+                }
+                else {
+                    files.clear();
+                    break;
+                }
+            }
+
+            kDebug(KIO_MTP) << "Showing" << files.size() << "files";
+
+            foreach ( LIBMTP_file_t *file, files.values() ) {
+                kDebug(KIO_MTP) << file->filename;
+
+                entry.insert( UDSEntry::UDS_NAME, QString::fromUtf8(file->filename) );
+                if (file->filetype == LIBMTP_FILETYPE_FOLDER)
+                {
+                    entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
+                    entry.insert( UDSEntry::UDS_ACCESS, S_IRWXU | S_IRWXG | S_IRWXO );
+                }
+                else
+                {
+                    entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFREG );
+                    entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
+                    entry.insert( UDSEntry::UDS_SIZE, file->filesize);
+                }
+                entry.insert( UDSEntry::UDS_INODE, file->item_id);
+                entry.insert( UDSEntry::UDS_ACCESS_TIME, file->modificationdate);
+                entry.insert( UDSEntry::UDS_MODIFICATION_TIME, file->modificationdate);
+                entry.insert( UDSEntry::UDS_CREATION_TIME, file->modificationdate);
+
+                listEntry(entry, false);
+                entry.clear();
+            }
+        }
+
+        LIBMTP_Release_Device( device );
     }
-    
     listEntry(entry, true);
     finished();
-    
+
     kDebug(KIO_MTP) << "[EXIT]";
 }
 
-void MTPSlave::mimetype(const KUrl& url)
-{
-    
-}
-
-void MTPSlave::stat( const KUrl& url )
-{
-    kDebug(KIO_MTP) << "stat() [" << url << "]";
-    
-    UDSEntry entry;
-    getEntry(url.path(), entry);
-    statEntry(entry);
-    
-    finished();
-}
-
-void MTPSlave::put(const KUrl& url, int permissions, JobFlags flags)
-{
-    //Workaround: Get data to tempfile, then copy on to device
-    KTemporaryFile temp;
-    temp.open();
-    QFileInfo fileInfo(temp);
-    
-    QByteArray buffer;
-    int len = 0;
-    
-    do
-    {
-        dataReq();
-        len = readData(buffer);
-        temp.write(buffer);
-    }
-    while (len > 0);
-    
-    QDBusPendingReply<int> reply = mtpdInterface->copyFileToDevice(url.path(), fileInfo.canonicalFilePath());
-    reply.waitForFinished();
-    
-    if (reply.isValid())
-    {
-        // set transaction ID to the transmitted value and connect to signals so we can receive updates
-        currentTransaction = reply.value();
-        connect ( mtpdInterface, SIGNAL ( transactionProgress ( int, qulonglong, qulonglong ) ),
-                  this, SLOT ( slotProgress ( int, qulonglong, qulonglong ) ) );
-        connect ( mtpdInterface, SIGNAL ( transactionFinished ( int ) ),
-                  this, SLOT ( slotFinished ( int ) ) );
-        waitLoop();
-    }
-    finished();
-}
-
-void MTPSlave::get(const KUrl& url)
-{
-    //Workaround: Get a tempfile, then copy data to it, then read
-    KTemporaryFile temp;
-    temp.open();
-    QFileInfo fileInfo(temp);
-    
-    QDBusPendingReply<int> reply = mtpdInterface->copyFileFromDevice(url.path(), fileInfo.canonicalFilePath());
-    reply.waitForFinished();
-    
-    if (reply.isValid())
-    {
-        // set transaction ID to the transmitted value and connect to signals so we can receive updates
-        currentTransaction = reply.value();
-        connect ( mtpdInterface, SIGNAL ( transactionProgress ( int, qulonglong, qulonglong ) ),
-                    this, SLOT ( slotProgress ( int, qulonglong, qulonglong ) ) );
-        connect ( mtpdInterface, SIGNAL ( transactionFinished ( int ) ),
-                  this, SLOT ( slotFinished ( int ) ) );
-        waitLoop();
-    }
-    
-    QByteArray arr;
-    
-    do
-    {
-        arr = temp.read(2048);
-        data(arr);
-    }
-    while (!arr.isEmpty());
-    finished();
-}
-
-void MTPSlave::copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags)
-{
-    // On device
-    if (src.protocol() == "mtp" && dest.protocol() == "mtp")
-    {
-        
-    }
-    // To device
-    if (src.protocol() == "file" && dest.protocol() == "mtp")
-    {
-        kDebug(KIO_MTP) << "Copy file " << src.path() << " from filesystem to device: " << dest.path();
-        
-        QDBusPendingReply<int> reply = mtpdInterface->copyFileToDevice(src.path(), dest.path());
-        reply.waitForFinished();
-        
-        if (reply.isValid())
-        {
-            // set transaction ID to the transmitted value and connect to signals so we can receive updates
-            currentTransaction = reply.value();
-            connect ( mtpdInterface, SIGNAL ( transactionProgress ( int, qulonglong, qulonglong ) ),
-                      this, SLOT ( slotProgress ( int, qulonglong, qulonglong ) ) );
-            connect ( mtpdInterface, SIGNAL ( transactionFinished ( int ) ),
-                      this, SLOT ( slotFinished ( int ) ) );
-            waitLoop();
-        }
-    }
-    // From device
-    if (src.protocol() == "mtp" && dest.protocol() == "file")
-    {
-        kDebug(KIO_MTP) << "Copy file " << src.path() << " from device to filesystem: " << dest.path();
-        
-        QDBusPendingReply<int> reply = mtpdInterface->copyFileFromDevice(src.path(), dest.path());
-        reply.waitForFinished();
-        
-        if (reply.isValid())
-        {
-            // set transaction ID to the transmitted value and connect to signals so we can receive updates
-            currentTransaction = reply.value();
-            connect ( mtpdInterface, SIGNAL ( transactionProgress ( int, qulonglong, qulonglong ) ),
-                      this, SLOT ( slotProgress ( int, qulonglong, qulonglong ) ) );
-            connect ( mtpdInterface, SIGNAL ( transactionFinished ( int ) ),
-                      this, SLOT ( slotFinished ( int ) ) );
-            waitLoop();
-        }
-    }
-    finished();
-}
-
-void MTPSlave::slotProgress(int transactionID, qulonglong sentBytes)
-{
-    kDebug(KIO_MTP) << "Received Update for transactionID=" << transactionID << "(Our ID=" << currentTransaction << ")";
-    
-    if (transactionID == currentTransaction)
-    {
-        processedSize(sentBytes);
-    }
-}
-
-void MTPSlave::slotFinished(int transactionID)
-{
-    if (transactionID == currentTransaction)
-    {
-        // reset transaction id and disconnect signals so we don't reveive updates
-        currentTransaction = 0;
-        disconnect ( mtpdInterface, SIGNAL ( transactionProgress ( int, qulonglong, qulonglong ) ),
-                  this, SLOT ( slotProgress ( int, qulonglong, qulonglong ) ) );
-        disconnect ( mtpdInterface, SIGNAL ( transactionFinished ( int ) ),
-                  this, SLOT ( slotFinished ( int ) ) );
-        
-        emit breakLoop();
-    }
-}
+// void MTPSlave::mimetype(const KUrl& url)
+// {
+// }
+//
+// void MTPSlave::stat( const KUrl& url )
+// {
+//     kDebug(KIO_MTP) << "stat()";
+//
+//     SlaveBase::stat( url );
+// }
+//
+// void MTPSlave::put(const KUrl& url, int permissions, JobFlags flags)
+// {
+// }
+//
+// void MTPSlave::get(const KUrl& url)
+// {
+// }
+//
+// void MTPSlave::copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags)
+// {
+// }
 
 #include "kio_mtp.moc"
