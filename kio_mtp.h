@@ -54,8 +54,8 @@ public:
 //     virtual void mimetype(const KUrl& url);
 //     virtual void get( const KUrl& url );
 //     virtual void put(const KUrl& url, int permissions, JobFlags flags);
-//     virtual void copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags);
-//     virtual void mkdir(const KUrl& url, int permissions);
+    virtual void copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags);
+    virtual void mkdir(const KUrl& url, int permissions);
 //     virtual void del(const KUrl& url, bool isfile);
 //     virtual void rename(const KUrl& src, const KUrl& dest, JobFlags flags);
 };

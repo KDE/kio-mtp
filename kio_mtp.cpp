@@ -161,6 +161,79 @@ QMap<QString, LIBMTP_file_t*> getFiles( LIBMTP_mtpdevice_t *device, LIBMTP_devic
     return files;
 }
 
+/**
+ * @brief Get's the correct object from the device.
+ * !Important! Release Device after using the returned object
+ * @param pathItems A QStringList containing the items of the filepath
+ * @return nullptr if the object doesn't exist or for root or, depending on the pathItems size device (1), storage (2) or file (>=3)
+ */
+QPair<void*, LIBMTP_mtpdevice_t*> getPath ( const QStringList& pathItems )
+{
+    kDebug(KIO_MTP) << "[ENTER]";
+
+    QPair<void*, LIBMTP_mtpdevice_t*> ret;
+
+    // Don' handle the root directory
+    if (pathItems.size() <= 0)
+    {
+        return ret;
+    }
+
+    QMap<QString, LIBMTP_raw_device_t*> devices = getRawDevices();
+
+    if ( devices.contains( pathItems.at(0) ) )
+    {
+        LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached( devices.value( pathItems.at(0) ) );
+
+        // return specific device
+        if ( pathItems.size() == 1 )
+        {
+            ret.first = device;
+            ret.second = device;
+        }
+
+        QMap<QString, LIBMTP_devicestorage_t*> storages = getDevicestorages( device );
+
+        if (storages.contains( pathItems.at(1) ) )
+        {
+            LIBMTP_devicestorage_t *storage = storages.value( pathItems.at(1) );
+
+            if ( pathItems.size() == 2 )
+            {
+                ret.first = storage;
+                ret.second = device;
+            }
+
+            int currentLevel = 2, currentParent = 0xFFFFFFFF;
+
+            QMap<QString, LIBMTP_file_t*> files;
+            LIBMTP_file_t *file;
+
+            // traverse further while depth not reached
+            while ( currentLevel < pathItems.size() )
+            {
+                files = getFiles( device, storage, currentParent );
+
+                if ( files.contains( pathItems.at(currentLevel) ) )
+                {
+                    file = files.value( pathItems.at( currentLevel ) );
+                    currentParent = file->item_id;
+                }
+                else
+                {
+                    return ret;
+                }
+                currentLevel++;
+            }
+
+            ret.first = file;
+            ret.second = device;
+        }
+    }
+
+    return ret;
+}
+
 void MTPSlave::listDir( const KUrl& url )
 {
     QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
@@ -188,6 +261,9 @@ void MTPSlave::listDir( const KUrl& url )
             listEntry(entry, false);
             entry.clear();
         }
+
+        listEntry(entry, true);
+        finished();
     }
     // traverse into device
     else if ( devices.contains( pathItems.at(0) ) )
@@ -215,6 +291,9 @@ void MTPSlave::listDir( const KUrl& url )
                 listEntry(entry, false);
                 entry.clear();
             }
+
+            listEntry(entry, true);
+            finished();
         }
         // traverse into storage
         else if ( storages.contains( pathItems.at(1) ) )
@@ -235,8 +314,8 @@ void MTPSlave::listDir( const KUrl& url )
                     files = getFiles( device, storage, currentParent );
                 }
                 else {
-                    files.clear();
-                    break;
+                    error(ERR_CANNOT_ENTER_DIRECTORY, url.path());
+                    return;
                 }
             }
 
@@ -265,12 +344,21 @@ void MTPSlave::listDir( const KUrl& url )
                 listEntry(entry, false);
                 entry.clear();
             }
+
+            listEntry(entry, true);
+            finished();
+        }
+        else
+        {
+            error(ERR_CANNOT_ENTER_DIRECTORY, url.path());
         }
 
         LIBMTP_Release_Device( device );
     }
-    listEntry(entry, true);
-    finished();
+    else
+    {
+        error(ERR_CANNOT_ENTER_DIRECTORY, url.path());
+    }
 
     kDebug(KIO_MTP) << "[EXIT]";
 }
@@ -293,9 +381,66 @@ void MTPSlave::listDir( const KUrl& url )
 // void MTPSlave::get(const KUrl& url)
 // {
 // }
-//
-// void MTPSlave::copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags)
-// {
-// }
+
+void MTPSlave::copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags)
+{
+}
+
+void MTPSlave::mkdir(const KUrl& url, int permissions)
+{
+    kDebug(KIO_MTP) << "[ENTER]";
+
+    QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
+
+    if ( pathItems.size() > 2 )
+    {
+        const char* temp = pathItems.takeLast().toStdString().c_str();
+        char *dirName = (char*)malloc( strlen( temp ) );
+        strcpy( dirName, temp);
+
+        LIBMTP_mtpdevice_t *device;
+        LIBMTP_file_t *file;
+
+        QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( pathItems );
+
+        if ( pair.first )
+        {
+            file = (LIBMTP_file_t*)pair.first;
+            device = pair.second;
+
+            if (file && file->filetype == LIBMTP_FILETYPE_FOLDER)
+            {
+                kDebug(KIO_MTP) << "Found parent" << file->item_id << file->filename;
+                kDebug(KIO_MTP) << "Attempting to create folder" << dirName;
+
+                int ret = LIBMTP_Create_Folder(device, dirName, file->item_id, file->storage_id);
+                if ( ret == 0 )
+                {
+                    LIBMTP_Dump_Errorstack(device);
+                    LIBMTP_Clear_Errorstack(device);
+
+                    error( ERR_COULD_NOT_MKDIR, url.path() );
+                    return;
+                }
+                else
+                {
+                    kDebug(KIO_MTP) << "Created folder" << ret;
+                }
+            }
+            else
+            {
+                error( ERR_COULD_NOT_MKDIR, url.path() );
+                return;
+            }
+        }
+        else
+        {
+            error( ERR_COULD_NOT_MKDIR, url.path() );
+            return;
+        }
+    }
+    finished();
+}
+
 
 #include "kio_mtp.moc"
