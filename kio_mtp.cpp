@@ -21,17 +21,19 @@
 #include "metatypes.h"
 
 #include <kcomponentdata.h>
-#include <QCoreApplication>
-#include <QThread>
 #include <QFileInfo>
 #include <QDateTime>
-#include <KTemporaryFile>
 
 #include <sys/stat.h>
 #include <sys/types.h>
 
 #include <libmtp.h>
 
+#include "kio_mtp_helpers.cpp"
+
+//////////////////////////////////////////////////////////////////////////////
+///////////////////////////// Slave Implementation ///////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 
 extern "C"
 int KDE_EXPORT kdemain( int argc, char **argv )
@@ -39,7 +41,6 @@ int KDE_EXPORT kdemain( int argc, char **argv )
     KComponentData instance( "kio_mtp" );
 
     KGlobal::locale();
-    QCoreApplication app( argc, argv );
 
     if (argc != 4)
     {
@@ -64,174 +65,6 @@ MTPSlave::MTPSlave(const QByteArray& pool, const QByteArray& app)
 
 MTPSlave::~MTPSlave()
 {
-}
-
-void getUDSEntry(UDSEntry &entry, const LIBMTP_file_t *file)
-{
-}
-
-QMap<QString, LIBMTP_raw_device_t*> getRawDevices()
-{
-    kDebug(KIO_MTP) << "getRawDevices()";
-
-    LIBMTP_raw_device_t *rawdevices;
-    int numrawdevices;
-    LIBMTP_error_number_t err;
-
-    QMap<QString, LIBMTP_raw_device_t*> devices;
-
-    err = LIBMTP_Detect_Raw_Devices(&rawdevices, &numrawdevices);
-    switch(err) {
-        case LIBMTP_ERROR_CONNECTING:
-//             WARNING("There has been an error connecting to the devices");
-            break;
-        case LIBMTP_ERROR_MEMORY_ALLOCATION:
-//             WARNING("Encountered a Memory Allocation Error");
-            break;
-        case LIBMTP_ERROR_NONE:
-            {
-                for (int i = 0; i < numrawdevices; i++)
-                {
-                    LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached( &rawdevices[i] );
-
-                    char *deviceName = LIBMTP_Get_Friendlyname( device );
-                    char *deviceModel = LIBMTP_Get_Modelname( device );
-
-                    // prefer friendly devicename over model
-                    QString name;
-                    if ( !deviceName )
-                        name = QString::fromUtf8(deviceModel);
-                    else
-                        name = QString::fromUtf8(deviceName);
-
-                    devices.insert(name, &rawdevices[i]);
-
-                    LIBMTP_Release_Device(device);
-                }
-            }
-            break;
-        case LIBMTP_ERROR_GENERAL:
-        default:
-//             WARNING("Unknown connection error");
-            break;
-    }
-    return devices;
-}
-
-QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages( LIBMTP_mtpdevice_t *device )
-{
-    kDebug(KIO_MTP) << "getDevicestorages()";
-
-    QMap<QString, LIBMTP_devicestorage_t*> storages;
-    if (device != NULL)
-    {
-        for (LIBMTP_devicestorage_t* storage = device->storage; storage != NULL; storage = storage->next)
-        {
-            char *storageIdentifier = storage->VolumeIdentifier;
-            char *storageDescription = storage->StorageDescription;
-
-            QString storagename;
-            if ( !storageIdentifier )
-                storagename = QString::fromUtf8( storageDescription );
-            else
-                storagename = QString::fromUtf8( storageIdentifier );
-
-            kDebug(KIO_MTP) << "found storage" << storagename;
-
-            storages.insert( storagename, storage );
-        }
-    }
-
-    return storages;
-}
-
-QMap<QString, LIBMTP_file_t*> getFiles( LIBMTP_mtpdevice_t *device, LIBMTP_devicestorage_t *storage, uint32_t parent_id = 0xFFFFFFFF )
-{
-    kDebug(KIO_MTP) << "getFiles() for parent" << parent_id;
-
-    QMap<QString, LIBMTP_file_t*> files;
-
-    LIBMTP_file_t *file = LIBMTP_Get_Files_And_Folders(device, storage->id, parent_id);
-    for (; file != NULL; file = file->next)
-    {
-        files.insert(QString::fromUtf8(file->filename), file);
-//         kDebug(KIO_MTP) << "found file" << file->filename;
-    }
-
-    return files;
-}
-
-/**
- * @brief Get's the correct object from the device.
- * !Important! Release Device after using the returned object
- * @param pathItems A QStringList containing the items of the filepath
- * @return nullptr if the object doesn't exist or for root or, depending on the pathItems size device (1), storage (2) or file (>=3)
- */
-QPair<void*, LIBMTP_mtpdevice_t*> getPath ( const QStringList& pathItems )
-{
-    kDebug(KIO_MTP) << "[ENTER]";
-
-    QPair<void*, LIBMTP_mtpdevice_t*> ret;
-
-    // Don' handle the root directory
-    if (pathItems.size() <= 0)
-    {
-        return ret;
-    }
-
-    QMap<QString, LIBMTP_raw_device_t*> devices = getRawDevices();
-
-    if ( devices.contains( pathItems.at(0) ) )
-    {
-        LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached( devices.value( pathItems.at(0) ) );
-
-        // return specific device
-        if ( pathItems.size() == 1 )
-        {
-            ret.first = device;
-            ret.second = device;
-        }
-
-        QMap<QString, LIBMTP_devicestorage_t*> storages = getDevicestorages( device );
-
-        if (storages.contains( pathItems.at(1) ) )
-        {
-            LIBMTP_devicestorage_t *storage = storages.value( pathItems.at(1) );
-
-            if ( pathItems.size() == 2 )
-            {
-                ret.first = storage;
-                ret.second = device;
-            }
-
-            int currentLevel = 2, currentParent = 0xFFFFFFFF;
-
-            QMap<QString, LIBMTP_file_t*> files;
-            LIBMTP_file_t *file;
-
-            // traverse further while depth not reached
-            while ( currentLevel < pathItems.size() )
-            {
-                files = getFiles( device, storage, currentParent );
-
-                if ( files.contains( pathItems.at(currentLevel) ) )
-                {
-                    file = files.value( pathItems.at( currentLevel ) );
-                    currentParent = file->item_id;
-                }
-                else
-                {
-                    return ret;
-                }
-                currentLevel++;
-            }
-
-            ret.first = file;
-            ret.second = device;
-        }
-    }
-
-    return ret;
 }
 
 void MTPSlave::listDir( const KUrl& url )
@@ -384,6 +217,112 @@ void MTPSlave::listDir( const KUrl& url )
 
 void MTPSlave::copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags)
 {
+    kDebug(KIO_MTP) << "[ENTER]";
+
+    // mtp:/// to mtp:///
+    if (src.protocol() == "mtp" && dest.protocol() == "mtp")
+    {
+        kDebug(KIO_MTP) << "Copy on device";
+        // MTP doesn't support moving files directly on the device, so we have to download and then upload...
+
+        error(ERR_UNSUPPORTED_ACTION, "Cannot copy/move files on the device itself");
+    }
+    // file:/// tp mtp:///
+    if (src.protocol() == "file" && dest.protocol() == "mtp")
+    {
+        QStringList destItems = dest.path().split('/', QString::SkipEmptyParts);
+
+        // Can't copy to root or device, needs storage
+        if (destItems.size() < 2)
+        {
+            error(ERR_UNSUPPORTED_ACTION, dest.path());
+            return;
+        }
+
+        kDebug(KIO_MTP) << "Copy file " << src.fileName() << "from filesystem to device" << src.directory(KUrl::AppendTrailingSlash) << dest.directory(KUrl::AppendTrailingSlash);
+
+//         destItems.takeLast();
+
+        QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( destItems );
+
+        if (!pair.first)
+        {
+            error(ERR_DOES_NOT_EXIST, dest.path());
+            return;
+        }
+
+        LIBMTP_mtpdevice_t *device = pair.second;
+        LIBMTP_file_t *parent = (LIBMTP_file_t*)pair.first;
+        if (parent->filetype != LIBMTP_FILETYPE_FOLDER)
+        {
+            error(ERR_IS_FILE, dest.directory());
+            return;
+        }
+
+        QFileInfo info(src.path());
+
+        LIBMTP_file_t *file = LIBMTP_new_file_t();
+        file->parent_id = parent->item_id;
+        file->filename = strdup(src.fileName().toStdString().c_str());
+        file->filetype = getFiletype(src.fileName());
+        file->filesize = info.size();
+        file->modificationdate = info.lastModified().toTime_t();
+        file->storage_id = parent->storage_id;
+
+        kDebug(KIO_MTP) << "Sending file" << file->filename;
+
+        totalSize(info.size());
+
+        int ret = LIBMTP_Send_File_From_File(device, src.path().toStdString().c_str(), file, (LIBMTP_progressfunc_t) &dataProgress, this);
+        if (ret != 0)
+        {
+            error(KIO::ERR_COULD_NOT_WRITE, dest.fileName());
+            LIBMTP_Dump_Errorstack(device);
+            LIBMTP_Clear_Errorstack(device);
+            return;
+        }
+    }
+    // mtp:/// to file:///
+    if (src.protocol() == "mtp" && dest.protocol() == "file")
+    {
+        kDebug(KIO_MTP) << "Copy file " << src.fileName() << "from device to filesystem" << src.directory(KUrl::AppendTrailingSlash) << dest.directory(KUrl::AppendTrailingSlash);
+
+        QStringList srcItems = src.path().split('/', QString::SkipEmptyParts);
+
+        // Can't copy to root or device, needs storage
+        if (srcItems.size() < 2)
+        {
+            error(ERR_UNSUPPORTED_ACTION, src.path());
+            return;
+        }
+
+        QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( srcItems );
+
+        LIBMTP_mtpdevice_t *device = pair.second;
+        LIBMTP_file_t *source = (LIBMTP_file_t*)pair.first;
+        if (source->filetype == LIBMTP_FILETYPE_FOLDER)
+        {
+            error(ERR_IS_DIRECTORY, src.directory());
+            return;
+        }
+
+        kDebug(KIO_MTP) << "Getting file" << source->filename << dest.fileName() << source->filesize;
+
+        totalSize(source->filesize);
+
+        int ret = LIBMTP_Get_File_To_File(device, source->item_id, dest.path().toStdString().c_str(), (LIBMTP_progressfunc_t) &dataProgress, this);
+        if (ret != 0)
+        {
+            error(KIO::ERR_COULD_NOT_WRITE, dest.fileName());
+            LIBMTP_Dump_Errorstack(device);
+            LIBMTP_Clear_Errorstack(device);
+            return;
+        }
+
+        kDebug(KIO_MTP) << "Sent file";
+
+    }
+    finished();
 }
 
 void MTPSlave::mkdir(const KUrl& url, int permissions)
