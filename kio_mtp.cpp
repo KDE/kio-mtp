@@ -59,8 +59,6 @@ MTPSlave::MTPSlave(const QByteArray& pool, const QByteArray& app)
     kDebug(KIO_MTP) << "Slave started";
 
     LIBMTP_Init();
-
-    kDebug(KIO_MTP) << "LIBMTP initialized";
 }
 
 MTPSlave::~MTPSlave()
@@ -112,7 +110,7 @@ void MTPSlave::listDir( const KUrl& url )
 
             foreach (const QString &storageName, storages.keys())
             {
-                kDebug(KIO_MTP) << "Showing " << storageName;
+//                 kDebug(KIO_MTP) << "Showing " << storageName;
 
                 // list storage
                 entry.insert( UDSEntry::UDS_NAME, storageName );
@@ -155,7 +153,7 @@ void MTPSlave::listDir( const KUrl& url )
             kDebug(KIO_MTP) << "Showing" << files.size() << "files";
 
             foreach ( LIBMTP_file_t *file, files.values() ) {
-                kDebug(KIO_MTP) << file->filename;
+//                 kDebug(KIO_MTP) << file->filename;
 
                 entry.insert( UDSEntry::UDS_NAME, QString::fromUtf8(file->filename) );
                 if (file->filetype == LIBMTP_FILETYPE_FOLDER)
@@ -215,7 +213,7 @@ void MTPSlave::listDir( const KUrl& url )
 // {
 // }
 
-void MTPSlave::copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags flags)
+void MTPSlave::copy(const KUrl& src, const KUrl& dest, int, JobFlags)
 {
     kDebug(KIO_MTP) << "[ENTER]";
 
@@ -325,17 +323,15 @@ void MTPSlave::copy(const KUrl& src, const KUrl& dest, int permissions, JobFlags
     finished();
 }
 
-void MTPSlave::mkdir(const KUrl& url, int permissions)
+void MTPSlave::mkdir(const KUrl& url, int)
 {
-    kDebug(KIO_MTP) << "[ENTER]";
+    kDebug(KIO_MTP) << "[ENTER]" << url.path();
 
     QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
 
-    if ( pathItems.size() > 2 )
+    if ( pathItems.size() > 2 && !getPath( pathItems ).first )
     {
-        const char* temp = pathItems.takeLast().toStdString().c_str();
-        char *dirName = (char*)malloc( strlen( temp ) );
-        strcpy( dirName, temp);
+        char *dirName = strdup(pathItems.takeLast().toStdString().c_str());
 
         LIBMTP_mtpdevice_t *device;
         LIBMTP_file_t *file;
@@ -377,6 +373,67 @@ void MTPSlave::mkdir(const KUrl& url, int permissions)
             error( ERR_COULD_NOT_MKDIR, url.path() );
             return;
         }
+    }
+    else
+    {
+        error( ERR_DIR_ALREADY_EXIST, url.path() );
+        return;
+    }
+    finished();
+}
+
+void MTPSlave::del(const KUrl& url, bool)
+{
+    QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
+
+    if (pathItems.size() < 2)
+    {
+        error(ERR_CANNOT_DELETE, url.path());
+        return;
+    }
+
+    QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( pathItems );
+
+    LIBMTP_file_t *file = (LIBMTP_file_t*)pair.first;
+
+    // TODO Maybe need to check for children? Or does KIO delete recursively?
+
+    int ret = LIBMTP_Delete_Object(pair.second, file->item_id);
+
+    LIBMTP_destroy_file_t(file);
+    LIBMTP_Release_Device(pair.second);
+
+    if (ret != 0)
+    {
+        error(ERR_CANNOT_DELETE, url.path());
+        return;
+    }
+    finished();
+}
+
+void MTPSlave::rename(const KUrl& src, const KUrl& dest, JobFlags)
+{
+    QStringList srcItems = src.path().split('/', QString::SkipEmptyParts);
+
+    if (srcItems.size() < 2)
+    {
+        error(ERR_CANNOT_RENAME, src.path());
+        return;
+    }
+
+    QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( srcItems );
+
+    LIBMTP_file_t *file = (LIBMTP_file_t*)pair.first;
+
+    int ret = LIBMTP_Set_File_Name(pair.second, file, dest.fileName().toStdString().c_str());
+
+    LIBMTP_destroy_file_t(file);
+    LIBMTP_Release_Device(pair.second);
+
+    if (ret != 0)
+    {
+        error(ERR_CANNOT_RENAME, src.path());
+        return;
     }
     finished();
 }
