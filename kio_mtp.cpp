@@ -230,6 +230,53 @@ void MTPSlave::mimetype(const KUrl& url)
 
 void MTPSlave::put(const KUrl& url, int permissions, JobFlags flags)
 {
+    QStringList destItems = url.path().split('/', QString::SkipEmptyParts);
+
+    // Can't copy to root or device, needs storage
+    if (destItems.size() < 2)
+    {
+        error(ERR_UNSUPPORTED_ACTION, url.path());
+        return;
+    }
+
+    kDebug(KIO_MTP) << "Put data to device:" << url.path();
+
+    destItems.takeLast();
+
+    QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( destItems );
+
+    if (!pair.first)
+    {
+        error(ERR_DOES_NOT_EXIST, url.path());
+        return;
+    }
+
+    LIBMTP_mtpdevice_t *device = pair.second;
+    LIBMTP_file_t *parent = (LIBMTP_file_t*)pair.first;
+    if (parent->filetype != LIBMTP_FILETYPE_FOLDER)
+    {
+        error(ERR_IS_FILE, url.directory());
+        return;
+    }
+
+    LIBMTP_file_t *file = LIBMTP_new_file_t();
+    file->parent_id = parent->item_id;
+    file->filename = strdup(url.fileName().toStdString().c_str());
+    file->filetype = getFiletype(url.fileName());
+    file->filesize = metaData("sourceSize").toLongLong();
+    file->modificationdate = QDateTime::currentDateTime().toTime_t();
+    file->storage_id = parent->storage_id;
+
+    kDebug(KIO_MTP) << "Sending file" << file->filename;
+
+    int ret = LIBMTP_Send_File_From_Handler( device, &dataGet, this, file, &dataProgress, this );
+    if (ret != 0)
+    {
+        error(KIO::ERR_COULD_NOT_WRITE, url.fileName());
+        LIBMTP_Dump_Errorstack(device);
+        LIBMTP_Clear_Errorstack(device);
+        return;
+    }
 }
 
 void MTPSlave::get( const KUrl& url )
