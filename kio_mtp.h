@@ -50,10 +50,10 @@ public:
     virtual ~MTPSlave();
 
     virtual void listDir( const KUrl& url );
-//     virtual void stat( const KUrl& url );
-//     virtual void mimetype(const KUrl& url);
-//     virtual void get( const KUrl& url );
-//     virtual void put(const KUrl& url, int permissions, JobFlags flags);
+    virtual void stat( const KUrl& url );
+    virtual void mimetype(const KUrl& url);
+    virtual void get( const KUrl& url );
+    virtual void put(const KUrl& url, int permissions, JobFlags flags);
     virtual void copy(const KUrl& src, const KUrl& dest, int, JobFlags);
     virtual void mkdir(const KUrl& url, int);
     virtual void del(const KUrl& url, bool);

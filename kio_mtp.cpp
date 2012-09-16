@@ -18,7 +18,6 @@
  */
 
 #include "kio_mtp.h"
-#include "metatypes.h"
 
 #include <kcomponentdata.h>
 #include <QFileInfo>
@@ -79,15 +78,15 @@ void MTPSlave::listDir( const KUrl& url )
     if (pathItems.size() == 0)
     {
         kDebug(KIO_MTP) << "Root directory, listing devices";
+        totalSize( devices.size() );
 
         foreach ( const QString &deviceName, devices.keys() )
         {
-            // list device
-            entry.insert( UDSEntry::UDS_NAME, deviceName );
-            entry.insert( UDSEntry::UDS_ICON_NAME, QString( "multimedia-player" ) );
-            entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
-            entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
-            entry.insert( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+            LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached( devices.value( deviceName ) );
+
+            getEntry( entry, device );
+
+            LIBMTP_Release_Device( device );
 
             listEntry(entry, false);
             entry.clear();
@@ -107,17 +106,11 @@ void MTPSlave::listDir( const KUrl& url )
         if ( pathItems.size() == 1)
         {
             kDebug(KIO_MTP) << "Listing storages for device " << pathItems.at(0);
+            totalSize( storages.size() );
 
             foreach (const QString &storageName, storages.keys())
             {
-//                 kDebug(KIO_MTP) << "Showing " << storageName;
-
-                // list storage
-                entry.insert( UDSEntry::UDS_NAME, storageName );
-                entry.insert( UDSEntry::UDS_ICON_NAME, QString( "drive-removable-media" ) );
-                entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
-                entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
-                entry.insert( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+                getEntry( entry, storages.value( storageName ) );
 
                 listEntry(entry, false);
                 entry.clear();
@@ -151,26 +144,11 @@ void MTPSlave::listDir( const KUrl& url )
             }
 
             kDebug(KIO_MTP) << "Showing" << files.size() << "files";
+            totalSize( files.size() );
 
             foreach ( LIBMTP_file_t *file, files.values() ) {
-//                 kDebug(KIO_MTP) << file->filename;
 
-                entry.insert( UDSEntry::UDS_NAME, QString::fromUtf8(file->filename) );
-                if (file->filetype == LIBMTP_FILETYPE_FOLDER)
-                {
-                    entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
-                    entry.insert( UDSEntry::UDS_ACCESS, S_IRWXU | S_IRWXG | S_IRWXO );
-                }
-                else
-                {
-                    entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFREG );
-                    entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
-                    entry.insert( UDSEntry::UDS_SIZE, file->filesize);
-                }
-                entry.insert( UDSEntry::UDS_INODE, file->item_id);
-                entry.insert( UDSEntry::UDS_ACCESS_TIME, file->modificationdate);
-                entry.insert( UDSEntry::UDS_MODIFICATION_TIME, file->modificationdate);
-                entry.insert( UDSEntry::UDS_CREATION_TIME, file->modificationdate);
+                getEntry( entry, file );
 
                 listEntry(entry, false);
                 entry.clear();
@@ -194,24 +172,101 @@ void MTPSlave::listDir( const KUrl& url )
     kDebug(KIO_MTP) << "[EXIT]";
 }
 
-// void MTPSlave::mimetype(const KUrl& url)
-// {
-// }
-//
-// void MTPSlave::stat( const KUrl& url )
-// {
-//     kDebug(KIO_MTP) << "stat()";
-//
-//     SlaveBase::stat( url );
-// }
-//
-// void MTPSlave::put(const KUrl& url, int permissions, JobFlags flags)
-// {
-// }
-//
-// void MTPSlave::get(const KUrl& url)
-// {
-// }
+void MTPSlave::stat(const KUrl& url)
+{
+    QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
+
+    QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( pathItems );
+    UDSEntry entry;
+
+    // Root
+    if ( pathItems.size() < 1 )
+    {
+        entry.insert( UDSEntry::UDS_NAME, "mtp:///" );
+        entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
+        entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
+        entry.insert( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+    }
+    // Device
+    else if ( pathItems.size() < 2 )
+    {
+        getEntry( entry, (LIBMTP_mtpdevice_t*)pair.first );
+    }
+    // Storage
+    else if (pathItems.size() < 3 )
+    {
+        getEntry( entry, (LIBMTP_devicestorage_t*)pair.first );
+    }
+    // Folder/File
+    else
+    {
+        getEntry( entry, (LIBMTP_file_t*)pair.first );
+    }
+
+    LIBMTP_Release_Device(pair.second);
+
+    statEntry( entry );
+}
+
+void MTPSlave::mimetype(const KUrl& url)
+{
+    QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
+
+    QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( pathItems );
+
+    if ( pair.first )
+    {
+        if ( pathItems.size() > 2 )
+            mimetype( getMimetype( (LIBMTP_file_t*)pair.first ) );
+        else
+            mimetype( "inode/directory" );
+    }
+    else
+    {
+        error( ERR_DOES_NOT_EXIST, url.path() );
+        return;
+    }
+}
+
+void MTPSlave::put(const KUrl& url, int permissions, JobFlags flags)
+{
+}
+
+void MTPSlave::get( const KUrl& url )
+{
+    QStringList pathItems = url.path().split( '/', QString::SkipEmptyParts );
+
+    // File
+    if (pathItems.size() > 2 )
+    {
+        QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( pathItems );
+
+        if ( pair.first )
+        {
+            LIBMTP_file_t *file = ( LIBMTP_file_t* )pair.second;
+
+            mimeType( getMimetype( file->filetype ) );
+            totalSize( file->filesize );
+
+            LIBMTP_mtpdevice_t *device = pair.second;
+
+            int ret = LIBMTP_Get_File_To_Handler( device, file->item_id, &dataPut, this, &dataProgress, this );
+            if (ret != 0)
+            {
+                error( ERR_COULD_NOT_READ, url.path() );
+                return;
+            }
+            data(QByteArray());
+            finished();
+        }
+        else
+            error( ERR_DOES_NOT_EXIST, url.path() );
+
+        LIBMTP_Release_Device( pair.second );
+    }
+    else
+        error( ERR_UNSUPPORTED_ACTION, url.path() );
+}
 
 void MTPSlave::copy(const KUrl& src, const KUrl& dest, int, JobFlags)
 {

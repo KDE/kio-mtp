@@ -28,6 +28,34 @@ int dataProgress(uint64_t const sent, uint64_t const, void const *const priv)
     return 0;
 }
 
+/**
+ * MTPDataPutFunc callback function, "puts" data from the device somewhere else
+ */
+uint16_t dataPut(void *params, void *priv, uint32_t sendlen, unsigned char *data, uint32_t *putlen)
+{
+    //     kDebug(KIO_MTP) << "transferring" << sendlen << "bytes to data()";
+    ((MTPSlave*) priv)->data(QByteArray((char*) data, (int)sendlen));
+    *putlen = sendlen;
+
+    return LIBMTP_HANDLER_RETURN_OK;
+}
+
+/**
+ * MTPDataGetFunc callback function, "gets" data and puts it on the device
+ */
+uint16_t dataGet(void *params, void *priv, uint32_t wantlen, unsigned char *data, uint32_t *gotlen)
+{
+    //     kDebug(KIO_MTP) << "transferring" << sendlen << "bytes to data()";
+    ((MTPSlave*) priv)->dataReq();
+
+    QByteArray buffer;
+    *gotlen = ((MTPSlave*) priv)->readData(buffer);
+
+    data = (unsigned char*) buffer.data();
+
+    return LIBMTP_HANDLER_RETURN_OK;
+}
+
 QString getMimetype(LIBMTP_filetype_t filetype)
 {
     switch (filetype)
@@ -379,4 +407,61 @@ QPair<void*, LIBMTP_mtpdevice_t*> getPath ( const QStringList& pathItems )
     }
 
     return ret;
+}
+
+void getEntry( UDSEntry &entry, const LIBMTP_mtpdevice_t* device )
+{
+    char *deviceName = LIBMTP_Get_Friendlyname( device );
+    char *deviceModel = LIBMTP_Get_Modelname( device );
+
+    // prefer friendly devicename over model
+    QString deviceName;
+    if ( !deviceName )
+        deviceName = QString::fromUtf8(deviceModel);
+    else
+        deviceName = QString::fromUtf8(deviceName);
+
+    entry.insert( UDSEntry::UDS_NAME, deviceName );
+    entry.insert( UDSEntry::UDS_ICON_NAME, QString( "multimedia-player" ) );
+    entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
+    entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
+    entry.insert( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+}
+
+void getEntry( UDSEntry &entry, const LIBMTP_devicestorage_t* storage )
+{
+    char *storageIdentifier = storage->VolumeIdentifier;
+    char *storageDescription = storage->StorageDescription;
+
+    QString storageName;
+    if ( !storageIdentifier )
+        storageName = QString::fromUtf8( storageDescription );
+    else
+        storageName = QString::fromUtf8( storageIdentifier );
+
+    entry.insert( UDSEntry::UDS_NAME, storageName );
+    entry.insert( UDSEntry::UDS_ICON_NAME, QString( "drive-removable-media" ) );
+    entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
+    entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
+    entry.insert( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+}
+
+void getEntry( UDSEntry &entry, const LIBMTP_file_t* file )
+{
+    entry.insert( UDSEntry::UDS_NAME, QString::fromUtf8(file->filename) );
+    if (file->filetype == LIBMTP_FILETYPE_FOLDER)
+    {
+        entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
+        entry.insert( UDSEntry::UDS_ACCESS, S_IRWXU | S_IRWXG | S_IRWXO );
+    }
+    else
+    {
+        entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFREG );
+        entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
+        entry.insert( UDSEntry::UDS_SIZE, file->filesize);
+    }
+    entry.insert( UDSEntry::UDS_INODE, file->item_id);
+    entry.insert( UDSEntry::UDS_ACCESS_TIME, file->modificationdate);
+    entry.insert( UDSEntry::UDS_MODIFICATION_TIME, file->modificationdate);
+    entry.insert( UDSEntry::UDS_CREATION_TIME, file->modificationdate);
 }
