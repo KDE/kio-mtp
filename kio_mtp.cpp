@@ -217,9 +217,9 @@ void MTPSlave::mimetype(const KUrl& url)
     if ( pair.first )
     {
         if ( pathItems.size() > 2 )
-            mimetype( getMimetype( (LIBMTP_file_t*)pair.first ) );
+            mimetype( getMimetype( ( (LIBMTP_file_t*)pair.first )->filetype ) );
         else
-            mimetype( "inode/directory" );
+            mimetype( QString("inode/directory") );
     }
     else
     {

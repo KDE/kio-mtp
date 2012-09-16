@@ -409,17 +409,17 @@ QPair<void*, LIBMTP_mtpdevice_t*> getPath ( const QStringList& pathItems )
     return ret;
 }
 
-void getEntry( UDSEntry &entry, const LIBMTP_mtpdevice_t* device )
+void getEntry( UDSEntry &entry, LIBMTP_mtpdevice_t* device )
 {
-    char *deviceName = LIBMTP_Get_Friendlyname( device );
-    char *deviceModel = LIBMTP_Get_Modelname( device );
+    char *charName = LIBMTP_Get_Friendlyname( device );
+    char *charModel = LIBMTP_Get_Modelname( device );
 
     // prefer friendly devicename over model
     QString deviceName;
-    if ( !deviceName )
-        deviceName = QString::fromUtf8(deviceModel);
+    if ( !charName )
+        deviceName = QString::fromUtf8(charModel);
     else
-        deviceName = QString::fromUtf8(deviceName);
+        deviceName = QString::fromUtf8(charName);
 
     entry.insert( UDSEntry::UDS_NAME, deviceName );
     entry.insert( UDSEntry::UDS_ICON_NAME, QString( "multimedia-player" ) );
@@ -430,14 +430,14 @@ void getEntry( UDSEntry &entry, const LIBMTP_mtpdevice_t* device )
 
 void getEntry( UDSEntry &entry, const LIBMTP_devicestorage_t* storage )
 {
-    char *storageIdentifier = storage->VolumeIdentifier;
-    char *storageDescription = storage->StorageDescription;
+    char *charIdentifier = storage->VolumeIdentifier;
+    char *charDescription = storage->StorageDescription;
 
     QString storageName;
-    if ( !storageIdentifier )
-        storageName = QString::fromUtf8( storageDescription );
+    if ( !charIdentifier )
+        storageName = QString::fromUtf8( charDescription );
     else
-        storageName = QString::fromUtf8( storageIdentifier );
+        storageName = QString::fromUtf8( charIdentifier );
 
     entry.insert( UDSEntry::UDS_NAME, storageName );
     entry.insert( UDSEntry::UDS_ICON_NAME, QString( "drive-removable-media" ) );
