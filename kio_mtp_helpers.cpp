@@ -293,12 +293,12 @@ QMap<QString, LIBMTP_raw_device_t*> getRawDevices()
     return devices;
 }
 
-QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages( LIBMTP_mtpdevice_t *device )
+QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages( LIBMTP_mtpdevice_t *&device )
 {
-    kDebug(KIO_MTP) << "getDevicestorages()";
+    kDebug(KIO_MTP) << "[ENTER]" << (device == 0);
 
     QMap<QString, LIBMTP_devicestorage_t*> storages;
-    if (device != NULL)
+    if ( device )
     {
         for (LIBMTP_devicestorage_t* storage = device->storage; storage != NULL; storage = storage->next)
         {
@@ -311,16 +311,18 @@ QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages( LIBMTP_mtpdevice_t *de
             else
                 storagename = QString::fromUtf8( storageIdentifier );
 
-//             kDebug(KIO_MTP) << "found storage" << storagename;
+            kDebug(KIO_MTP) << "found storage" << storagename;
 
             storages.insert( storagename, storage );
         }
     }
 
+    kDebug(KIO_MTP) << "[EXIT]";
+
     return storages;
 }
 
-QMap<QString, LIBMTP_file_t*> getFiles( LIBMTP_mtpdevice_t *device, LIBMTP_devicestorage_t *storage, uint32_t parent_id = 0xFFFFFFFF )
+QMap<QString, LIBMTP_file_t*> getFiles( LIBMTP_mtpdevice_t *&device, LIBMTP_devicestorage_t *&storage, uint32_t parent_id = 0xFFFFFFFF )
 {
     kDebug(KIO_MTP) << "getFiles() for parent" << parent_id;
 
@@ -330,7 +332,7 @@ QMap<QString, LIBMTP_file_t*> getFiles( LIBMTP_mtpdevice_t *device, LIBMTP_devic
     for (; file != NULL; file = file->next)
     {
         files.insert(QString::fromUtf8(file->filename), file);
-        //         kDebug(KIO_MTP) << "found file" << file->filename;
+        kDebug(KIO_MTP) << "found file" << file->filename;
     }
 
     return files;
@@ -369,7 +371,7 @@ QPair<void*, LIBMTP_mtpdevice_t*> getPath ( const QStringList& pathItems )
 
         QMap<QString, LIBMTP_devicestorage_t*> storages = getDevicestorages( device );
 
-        if (storages.contains( pathItems.at(1) ) )
+        if (pathItems.size() > 1 && storages.contains( pathItems.at(1) ) )
         {
             LIBMTP_devicestorage_t *storage = storages.value( pathItems.at(1) );
 

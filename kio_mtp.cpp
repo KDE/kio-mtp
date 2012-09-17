@@ -69,7 +69,7 @@ void MTPSlave::listDir( const KUrl& url )
 {
     QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
 
-    kDebug(KIO_MTP) << "listDir()" << url.path() << pathItems.size();
+    kDebug(KIO_MTP) << url.path();
 
     UDSEntry entry;
 
@@ -173,40 +173,45 @@ void MTPSlave::listDir( const KUrl& url )
     kDebug(KIO_MTP) << "[EXIT]";
 }
 
-void MTPSlave::stat(const KUrl& url)
+void MTPSlave::stat( const KUrl& url )
 {
-    QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
+    kDebug(KIO_MTP) << url.path();
+
+    QStringList pathItems = url.path().split( '/', QString::SkipEmptyParts );
 
     QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( pathItems );
     UDSEntry entry;
 
-    // Root
-    if ( pathItems.size() < 1 )
+    if ( pair.first )
     {
-        entry.insert( UDSEntry::UDS_NAME, "mtp:///" );
-        entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
-        entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
-        entry.insert( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
-    }
-    // Device
-    else if ( pathItems.size() < 2 )
-    {
-        getEntry( entry, (LIBMTP_mtpdevice_t*)pair.first );
-    }
-    // Storage
-    else if (pathItems.size() < 3 )
-    {
-        getEntry( entry, (LIBMTP_devicestorage_t*)pair.first );
-    }
-    // Folder/File
-    else
-    {
-        getEntry( entry, (LIBMTP_file_t*)pair.first );
-    }
+        // Root
+        if ( pathItems.size() < 1 )
+        {
+            entry.insert( UDSEntry::UDS_NAME, "mtp:///" );
+            entry.insert( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
+            entry.insert( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
+            entry.insert( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+        }
+        // Device
+        else if ( pathItems.size() < 2 )
+        {
+            getEntry( entry, pair.second );
+        }
+        // Storage
+        else if (pathItems.size() < 3 )
+        {
+            getEntry( entry, (LIBMTP_devicestorage_t*)pair.first );
+        }
+        // Folder/File
+        else
+        {
+            getEntry( entry, (LIBMTP_file_t*)pair.first );
+        }
 
-    LIBMTP_Release_Device(pair.second);
-
+        LIBMTP_Release_Device( pair.second );
+    }
     statEntry( entry );
+    finished();
 }
 
 void MTPSlave::mimetype(const KUrl& url)
@@ -490,29 +495,15 @@ void MTPSlave::mkdir(const KUrl& url, int)
                 kDebug(KIO_MTP) << "Attempting to create folder" << dirName;
 
                 int ret = LIBMTP_Create_Folder(device, dirName, file->item_id, file->storage_id);
-                if ( ret == 0 )
+                if ( ret != 0 )
                 {
-                    LIBMTP_Dump_Errorstack(device);
-                    LIBMTP_Clear_Errorstack(device);
-
-                    error( ERR_COULD_NOT_MKDIR, url.path() );
+                    finished();
                     return;
                 }
-                else
-                {
-                    kDebug(KIO_MTP) << "Created folder" << ret;
-                }
+
+                LIBMTP_Dump_Errorstack(device);
+                LIBMTP_Clear_Errorstack(device);
             }
-            else
-            {
-                error( ERR_COULD_NOT_MKDIR, url.path() );
-                return;
-            }
-        }
-        else
-        {
-            error( ERR_COULD_NOT_MKDIR, url.path() );
-            return;
         }
     }
     else
@@ -520,7 +511,8 @@ void MTPSlave::mkdir(const KUrl& url, int)
         error( ERR_DIR_ALREADY_EXIST, url.path() );
         return;
     }
-    finished();
+
+    error( ERR_COULD_NOT_MKDIR, url.path() );
 }
 
 void MTPSlave::del(const KUrl& url, bool)
@@ -581,3 +573,4 @@ void MTPSlave::rename(const KUrl& src, const KUrl& dest, JobFlags)
 
 
 #include "kio_mtp.moc"
+
