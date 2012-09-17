@@ -539,8 +539,6 @@ void MTPSlave::del(const KUrl& url, bool)
 
     LIBMTP_file_t *file = (LIBMTP_file_t*)pair.first;
 
-    // TODO Maybe need to check for children? Or does KIO delete recursively?
-
     int ret = LIBMTP_Delete_Object(pair.second, file->item_id);
 
     LIBMTP_destroy_file_t(file);
