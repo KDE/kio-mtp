@@ -216,6 +216,8 @@ void MTPSlave::stat( const KUrl& url )
 
 void MTPSlave::mimetype(const KUrl& url)
 {
+    kDebug(KIO_MTP) << url.path();
+
     QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
 
     QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( pathItems );
@@ -236,6 +238,8 @@ void MTPSlave::mimetype(const KUrl& url)
 
 void MTPSlave::put(const KUrl& url, int permissions, JobFlags flags)
 {
+    kDebug(KIO_MTP) << url.path();
+
     QStringList destItems = url.path().split('/', QString::SkipEmptyParts);
 
     // Can't copy to root or device, needs storage
@@ -244,8 +248,6 @@ void MTPSlave::put(const KUrl& url, int permissions, JobFlags flags)
         error(ERR_UNSUPPORTED_ACTION, url.path());
         return;
     }
-
-    kDebug(KIO_MTP) << "Put data to device:" << url.path();
 
     destItems.takeLast();
 
@@ -268,6 +270,8 @@ void MTPSlave::put(const KUrl& url, int permissions, JobFlags flags)
     // We did get a total size from the application
     if ( hasMetaData("sourceSize") )
     {
+        kDebug(KIO_MTP) << "direct put";
+
         LIBMTP_file_t *file = LIBMTP_new_file_t();
         file->parent_id = parent->item_id;
         file->filename = strdup(url.fileName().toStdString().c_str());
@@ -290,6 +294,8 @@ void MTPSlave::put(const KUrl& url, int permissions, JobFlags flags)
     // We need to get the entire file first, then we can upload
     else
     {
+        kDebug(KIO_MTP) << "use temp file";
+
         KTemporaryFile temp;
         QByteArray buffer;
         int len = 0;
@@ -325,6 +331,8 @@ void MTPSlave::put(const KUrl& url, int permissions, JobFlags flags)
 
 void MTPSlave::get( const KUrl& url )
 {
+    kDebug(KIO_MTP) << url.path();
+
     QStringList pathItems = url.path().split( '/', QString::SkipEmptyParts );
 
     // File
@@ -361,12 +369,12 @@ void MTPSlave::get( const KUrl& url )
 
 void MTPSlave::copy(const KUrl& src, const KUrl& dest, int, JobFlags)
 {
-    kDebug(KIO_MTP) << "[ENTER]";
+    kDebug(KIO_MTP) << src.path() << dest.path();
 
     // mtp:/// to mtp:///
     if (src.protocol() == "mtp" && dest.protocol() == "mtp")
     {
-        kDebug(KIO_MTP) << "Copy on device";
+        kDebug(KIO_MTP) << "Copy on device: Not supported";
         // MTP doesn't support moving files directly on the device, so we have to download and then upload...
 
         error(ERR_UNSUPPORTED_ACTION, "Cannot copy/move files on the device itself");
@@ -385,13 +393,13 @@ void MTPSlave::copy(const KUrl& src, const KUrl& dest, int, JobFlags)
 
         kDebug(KIO_MTP) << "Copy file " << src.fileName() << "from filesystem to device" << src.directory(KUrl::AppendTrailingSlash) << dest.directory(KUrl::AppendTrailingSlash);
 
-//         destItems.takeLast();
+        destItems.takeLast();
 
         QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath( destItems );
 
         if (!pair.first)
         {
-            error(ERR_DOES_NOT_EXIST, dest.path());
+            error( ERR_DOES_NOT_EXIST, dest.directory( KUrl::AppendTrailingSlash ) );
             return;
         }
 
@@ -471,7 +479,7 @@ void MTPSlave::copy(const KUrl& src, const KUrl& dest, int, JobFlags)
 
 void MTPSlave::mkdir(const KUrl& url, int)
 {
-    kDebug(KIO_MTP) << "[ENTER]" << url.path();
+    kDebug(KIO_MTP) << url.path();
 
     QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
 
@@ -517,6 +525,8 @@ void MTPSlave::mkdir(const KUrl& url, int)
 
 void MTPSlave::del(const KUrl& url, bool)
 {
+    kDebug(KIO_MTP) << url.path();
+
     QStringList pathItems = url.path().split('/', QString::SkipEmptyParts);
 
     if (pathItems.size() < 2)
@@ -546,6 +556,8 @@ void MTPSlave::del(const KUrl& url, bool)
 
 void MTPSlave::rename(const KUrl& src, const KUrl& dest, JobFlags)
 {
+    kDebug(KIO_MTP) << src.path();
+
     QStringList srcItems = src.path().split('/', QString::SkipEmptyParts);
 
     if (srcItems.size() < 2)

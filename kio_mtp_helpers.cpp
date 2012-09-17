@@ -311,7 +311,7 @@ QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages( LIBMTP_mtpdevice_t *&d
             else
                 storagename = QString::fromUtf8( storageIdentifier );
 
-            kDebug(KIO_MTP) << "found storage" << storagename;
+//             kDebug(KIO_MTP) << "found storage" << storagename;
 
             storages.insert( storagename, storage );
         }
@@ -332,7 +332,7 @@ QMap<QString, LIBMTP_file_t*> getFiles( LIBMTP_mtpdevice_t *&device, LIBMTP_devi
     for (; file != NULL; file = file->next)
     {
         files.insert(QString::fromUtf8(file->filename), file);
-        kDebug(KIO_MTP) << "found file" << file->filename;
+//         kDebug(KIO_MTP) << "found file" << file->filename;
     }
 
     return files;
