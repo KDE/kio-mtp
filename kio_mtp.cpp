@@ -71,15 +71,20 @@ bool MTPSlave::checkUrl ( const KUrl& url )
 {
     kDebug ( KIO_MTP ) << url;
 
-    if ( url.path().startsWith( "udi=" ) )
+    if ( url.path().startsWith ( "udi=" ) )
     {
-        QString udi = url.path().remove(0, 4);
+        QString udi = url.path().remove ( 0, 4 );
 
-        Solid::GenericInterface *iface = Solid::Device(udi).as<Solid::GenericInterface>();
+        Solid::Device device ( udi );
+        if ( !device.isValid() )
+        {
+            return false;
+        }
+        Solid::GenericInterface *iface = device.as<Solid::GenericInterface>();
         QMap<QString, QVariant> properties = iface->allProperties();
 
-        int busnum = properties.value("BUSNUM").toInt();
-        int devnum = properties.value("DEVNUM").toInt();
+        int busnum = properties.value ( "BUSNUM" ).toInt();
+        int devnum = properties.value ( "DEVNUM" ).toInt();
 
         kDebug ( KIO_MTP ) << "From UDI:" << busnum << devnum;
 
@@ -87,7 +92,7 @@ bool MTPSlave::checkUrl ( const KUrl& url )
 
         foreach ( const QString &deviceName, devices.keys() )
         {
-            LIBMTP_raw_device_t* rawDevice = devices.value( deviceName );
+            LIBMTP_raw_device_t* rawDevice = devices.value ( deviceName );
             int currentBusNum = rawDevice->bus_location;
             int currentDevNum = rawDevice->devnum;
 
@@ -96,9 +101,9 @@ bool MTPSlave::checkUrl ( const KUrl& url )
             if ( currentBusNum == busnum && currentDevNum == devnum )
             {
                 KUrl newUrl;
-                newUrl.setProtocol("mtp");
-                newUrl.setPath( QString("/").append( deviceName ) );
-                redirection( newUrl );
+                newUrl.setProtocol ( "mtp" );
+                newUrl.setPath ( QString ( "/" ).append ( deviceName ) );
+                redirection ( newUrl );
                 return true;
             }
         }
@@ -108,7 +113,7 @@ bool MTPSlave::checkUrl ( const KUrl& url )
 
 void MTPSlave::listDir ( const KUrl& url )
 {
-    if ( checkUrl( url ) )
+    if ( checkUrl ( url ) )
     {
         finished();
         return;
@@ -224,7 +229,7 @@ void MTPSlave::listDir ( const KUrl& url )
 
 void MTPSlave::stat ( const KUrl& url )
 {
-    if ( checkUrl( url ) )
+    if ( checkUrl ( url ) )
     {
         finished();
         return;
@@ -271,7 +276,7 @@ void MTPSlave::stat ( const KUrl& url )
 
 void MTPSlave::mimetype ( const KUrl& url )
 {
-    if ( checkUrl( url ) )
+    if ( checkUrl ( url ) )
     {
         finished();
         return;
@@ -619,7 +624,14 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
 
     QStringList srcItems = src.path().split ( '/', QString::SkipEmptyParts );
 
-    if ( srcItems.size() < 2 )
+    // Rename Device
+    if ( srcItems.size() == 1 )
+    {
+        error ( ERR_CANNOT_RENAME, src.path() );
+        return;
+    }
+    // Rename Storage
+    else if ( srcItems.size() == 2 )
     {
         error ( ERR_CANNOT_RENAME, src.path() );
         return;
