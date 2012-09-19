@@ -28,6 +28,8 @@
 #include <sys/types.h>
 
 #include <libmtp.h>
+#include <solid/device.h>
+#include <solid/genericinterface.h>
 
 #include "kio_mtp_helpers.cpp"
 
@@ -65,8 +67,53 @@ MTPSlave::~MTPSlave()
 {
 }
 
+bool MTPSlave::checkUrl ( const KUrl& url )
+{
+    kDebug ( KIO_MTP ) << url;
+
+    if ( url.path().startsWith( "udi=" ) )
+    {
+        QString udi = url.path().remove(0, 4);
+
+        Solid::GenericInterface *iface = Solid::Device(udi).as<Solid::GenericInterface>();
+        QMap<QString, QVariant> properties = iface->allProperties();
+
+        int busnum = properties.value("BUSNUM").toInt();
+        int devnum = properties.value("DEVNUM").toInt();
+
+        kDebug ( KIO_MTP ) << "From UDI:" << busnum << devnum;
+
+        QMap<QString, LIBMTP_raw_device_t*> devices = getRawDevices();
+
+        foreach ( const QString &deviceName, devices.keys() )
+        {
+            LIBMTP_raw_device_t* rawDevice = devices.value( deviceName );
+            int currentBusNum = rawDevice->bus_location;
+            int currentDevNum = rawDevice->devnum;
+
+            kDebug ( KIO_MTP ) << "From LIBMTP:"<< currentBusNum << currentDevNum;
+
+            if ( currentBusNum == busnum && currentDevNum == devnum )
+            {
+                KUrl newUrl;
+                newUrl.setProtocol("mtp");
+                newUrl.setPath( QString("/").append( deviceName ) );
+                redirection( newUrl );
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void MTPSlave::listDir ( const KUrl& url )
 {
+    if ( checkUrl( url ) )
+    {
+        finished();
+        return;
+    }
+
     QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
 
     kDebug ( KIO_MTP ) << url.path();
@@ -177,6 +224,12 @@ void MTPSlave::listDir ( const KUrl& url )
 
 void MTPSlave::stat ( const KUrl& url )
 {
+    if ( checkUrl( url ) )
+    {
+        finished();
+        return;
+    }
+
     kDebug ( KIO_MTP ) << url.path();
 
     QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
@@ -218,6 +271,12 @@ void MTPSlave::stat ( const KUrl& url )
 
 void MTPSlave::mimetype ( const KUrl& url )
 {
+    if ( checkUrl( url ) )
+    {
+        finished();
+        return;
+    }
+
     kDebug ( KIO_MTP ) << url.path();
 
     QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );

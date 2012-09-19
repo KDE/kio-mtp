@@ -19,7 +19,7 @@ include_directories(
 )
 
 kde4_add_plugin( kio_mtp ${kio_mtp_PART_SRCS} )
-target_link_libraries( kio_mtp ${KDE4_KIO_LIBRARY} ${MTP_LIBRARIES} )
+target_link_libraries( kio_mtp ${KDE4_KIO_LIBRARY} ${MTP_LIBRARIES} ${KDE4_SOLID_LIBS} )
 
 install( TARGETS kio_mtp DESTINATION ${PLUGIN_INSTALL_DIR} )
 

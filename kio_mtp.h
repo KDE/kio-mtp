@@ -42,6 +42,9 @@ class MTPSlave : public QObject, public KIO::SlaveBase
 {
     Q_OBJECT
 
+private:
+    bool checkUrl( const KUrl& url );
+
 public:
     /*
      * Overwritten KIO-functions, see "kio_mtp.cpp"
