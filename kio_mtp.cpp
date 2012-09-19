@@ -623,35 +623,44 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
     kDebug ( KIO_MTP ) << src.path();
 
     QStringList srcItems = src.path().split ( '/', QString::SkipEmptyParts );
-
-    // Rename Device
-    if ( srcItems.size() == 1 )
-    {
-        error ( ERR_CANNOT_RENAME, src.path() );
-        return;
-    }
-    // Rename Storage
-    else if ( srcItems.size() == 2 )
-    {
-        error ( ERR_CANNOT_RENAME, src.path() );
-        return;
-    }
-
     QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath ( srcItems );
 
-    LIBMTP_file_t *file = ( LIBMTP_file_t* ) pair.first;
-
-    int ret = LIBMTP_Set_File_Name ( pair.second, file, dest.fileName().toStdString().c_str() );
-
-    LIBMTP_destroy_file_t ( file );
-    LIBMTP_Release_Device ( pair.second );
-
-    if ( ret != 0 )
+    if ( pair.first )
     {
-        error ( ERR_CANNOT_RENAME, src.path() );
-        return;
+        // Rename Device
+        if ( srcItems.size() == 1 )
+        {
+            LIBMTP_Set_Friendlyname( pair.second, dest.fileName().toStdString().c_str() );
+        }
+        // Rename Storage
+        else if ( srcItems.size() == 2 )
+        {
+            error ( ERR_CANNOT_RENAME, src.path() );
+            return;
+        }
+        else
+        {
+            QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath ( srcItems );
+
+            LIBMTP_file_t *file = ( LIBMTP_file_t* ) pair.first;
+
+            int ret = LIBMTP_Set_File_Name ( pair.second, file, dest.fileName().toStdString().c_str() );
+
+            LIBMTP_destroy_file_t ( file );
+            LIBMTP_Release_Device ( pair.second );
+
+            if ( ret != 0 )
+            {
+                error ( ERR_CANNOT_RENAME, src.path() );
+                return;
+            }
+        }
+        finished();
     }
-    finished();
+    else
+    {
+        error( ERR_DOES_NOT_EXIST, src.path() );
+    }
 }
 
 
