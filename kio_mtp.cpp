@@ -294,9 +294,13 @@ void MTPSlave::listDir ( const KUrl& url )
             kDebug ( KIO_MTP ) << "Showing" << fileMap.size() << "files";
             totalSize ( fileMap.size() );
 
-            foreach ( uint32_t file_id, fileMap.values() )
+            for ( QMap<QString, uint32_t>::iterator it = fileMap.begin(); it != fileMap.end(); it++ )
             {
-                LIBMTP_file_t *file = LIBMTP_Get_Filemetadata( device, file_id );
+                LIBMTP_file_t *file = LIBMTP_Get_Filemetadata( device, it.value() );
+
+                QString filePath = url.path( KUrl::AddTrailingSlash );
+                filePath.append( it.key() );
+                fileCache.insert( filePath, it.value() );
 
                 getEntry ( entry, file );
 
