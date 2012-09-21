@@ -32,6 +32,9 @@
 #include <errno.h>
 #include <time.h>
 
+#include <QtCore/QCache>
+#include <libmtp.h>
+
 #define MAX_XFER_BUF_SIZE           16348
 #define KIO_MTP                     7000
 
@@ -44,6 +47,8 @@ class MTPSlave : public QObject, public KIO::SlaveBase
 
 private:
     bool checkUrl( const KUrl& url );
+    QMap<QString, uint32_t> fileCache;
+    QPair<void*, LIBMTP_mtpdevice_t*> getPath( const QString& path );
 
 public:
     /*

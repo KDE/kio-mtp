@@ -392,93 +392,23 @@ QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages ( LIBMTP_mtpdevice_t *&
     return storages;
 }
 
-QMap<QString, LIBMTP_file_t*> getFiles ( LIBMTP_mtpdevice_t *&device, LIBMTP_devicestorage_t *&storage, uint32_t parent_id = 0xFFFFFFFF )
+QMap<QString, uint32_t> getFiles ( LIBMTP_mtpdevice_t *&device, uint32_t storage_id, uint32_t parent_id = 0xFFFFFFFF )
 {
     kDebug ( KIO_MTP ) << "getFiles() for parent" << parent_id;
 
-    QMap<QString, LIBMTP_file_t*> files;
+    QMap<QString, uint32_t> fileMap;
 
-    LIBMTP_file_t *file = LIBMTP_Get_Files_And_Folders ( device, storage->id, parent_id );
-    for ( ; file != NULL; file = file->next )
+    LIBMTP_file_t *files = LIBMTP_Get_Files_And_Folders ( device, storage_id, parent_id ), *file;
+    for ( file = files; file != NULL; file = file->next )
     {
-        files.insert ( QString::fromUtf8 ( file->filename ), file );
+        fileMap.insert ( QString::fromUtf8 ( file->filename ), file->item_id );
 //         kDebug(KIO_MTP) << "found file" << file->filename;
     }
+    LIBMTP_destroy_file_t( files );
 
-    return files;
-}
+    kDebug ( KIO_MTP ) << "[EXIT]";
 
-/**
- * @brief Get's the correct object from the device.
- * !Important! Release Device after using the returned object
- * @param pathItems A QStringList containing the items of the filepath
- * @return QPair with the object and its device. pair.fist is a nullpointer if the object doesn't exist or for root or, depending on the pathItems size device (1), storage (2) or file (>=3)
- */
-QPair<void*, LIBMTP_mtpdevice_t*> getPath ( const QStringList& pathItems )
-{
-    kDebug ( KIO_MTP ) << "[ENTER]";
-
-    QPair<void*, LIBMTP_mtpdevice_t*> ret;
-
-    // Don' handle the root directory
-    if ( pathItems.size() <= 0 )
-    {
-        return ret;
-    }
-
-    QMap<QString, LIBMTP_raw_device_t*> devices = getRawDevices();
-
-    if ( devices.contains ( pathItems.at ( 0 ) ) )
-    {
-        LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached ( devices.value ( pathItems.at ( 0 ) ) );
-
-        // return specific device
-        if ( pathItems.size() == 1 )
-        {
-            ret.first = device;
-            ret.second = device;
-        }
-
-        QMap<QString, LIBMTP_devicestorage_t*> storages = getDevicestorages ( device );
-
-        if ( pathItems.size() > 1 && storages.contains ( pathItems.at ( 1 ) ) )
-        {
-            LIBMTP_devicestorage_t *storage = storages.value ( pathItems.at ( 1 ) );
-
-            if ( pathItems.size() == 2 )
-            {
-                ret.first = storage;
-                ret.second = device;
-            }
-
-            int currentLevel = 2, currentParent = 0xFFFFFFFF;
-
-            QMap<QString, LIBMTP_file_t*> files;
-            LIBMTP_file_t *file;
-
-            // traverse further while depth not reached
-            while ( currentLevel < pathItems.size() )
-            {
-                files = getFiles ( device, storage, currentParent );
-
-                if ( files.contains ( pathItems.at ( currentLevel ) ) )
-                {
-                    file = files.value ( pathItems.at ( currentLevel ) );
-                    currentParent = file->item_id;
-                }
-                else
-                {
-                    return ret;
-                }
-                currentLevel++;
-            }
-
-            ret.first = file;
-            ret.second = device;
-        }
-    }
-
-    return ret;
+    return fileMap;
 }
 
 void getEntry ( UDSEntry &entry, LIBMTP_mtpdevice_t* device )
