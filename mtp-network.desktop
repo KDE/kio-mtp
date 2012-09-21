@@ -1,6 +1,11 @@
 [Desktop Entry]
 Icon=multimedia-device
 Name=MTP Device
+Name[nl]=MTP-apparaat
+Name[pt_BR]=Dispositivo MTP
+Name[sv]=MTP-enhet
+Name[uk]=Пристрій MTP
+Name[x-test]=xxMTP Devicexx
 Open=false
 Type=Link
 URL=mtp:/
