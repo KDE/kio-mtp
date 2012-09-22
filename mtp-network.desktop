@@ -1,8 +1,11 @@
 [Desktop Entry]
 Icon=multimedia-device
 Name=MTP Device
+Name[ga]=Gléas MTP
 Name[nl]=MTP-apparaat
+Name[pt]=Dispositivo MTP
 Name[pt_BR]=Dispositivo MTP
+Name[sk]=Zariadenie MTP
 Name[sv]=MTP-enhet
 Name[uk]=Пристрій MTP
 Name[x-test]=xxMTP Devicexx
