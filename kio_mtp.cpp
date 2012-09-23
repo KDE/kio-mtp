@@ -24,6 +24,7 @@
 #include <QFileInfo>
 #include <QDateTime>
 #include <QCoreApplication>
+#include <QTimer>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -70,6 +71,7 @@ MTPSlave::MTPSlave ( const QByteArray& pool, const QByteArray& app )
 
 MTPSlave::~MTPSlave()
 {
+    fileCache->exit();
 }
 
 /**
@@ -80,9 +82,9 @@ MTPSlave::~MTPSlave()
  */
 QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
 {
-    kDebug ( KIO_MTP ) << path;
-
     QStringList pathItems = path.split ( '/', QString::SkipEmptyParts );
+
+    kDebug ( KIO_MTP ) << path << pathItems.size();
 
     QPair<void*, LIBMTP_mtpdevice_t*> ret;
 
@@ -131,17 +133,17 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
 
                 kDebug() << "Match for parent found in cache, checking device";
 
-                LIBMTP_file_t* file = LIBMTP_Get_Filemetadata ( device, c_parentID );
-                if ( file )
+                LIBMTP_file_t* parent = LIBMTP_Get_Filemetadata ( device, c_parentID );
+                if ( parent )
                 {
                     kDebug ( KIO_MTP ) << "Found parent in cache";
                     fileCache->addPath( parentPath, c_parentID );
 
-                    QMap<QString, uint32_t> files = getFiles ( device, file->storage_id, c_parentID );
+                    QMap<QString, LIBMTP_file_t*> files = getFiles ( device, parent->storage_id, c_parentID );
 
                     if ( files.contains ( pathItems.last() ) )
                     {
-                        file = LIBMTP_Get_Filemetadata ( device, files.value( pathItems.last() ) );
+                        LIBMTP_file_t* file = files.value( pathItems.last() );
 
                         ret.first = file;
                         ret.second = device;
@@ -158,17 +160,21 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
 
         if ( pathItems.size() > 1 && storages.contains ( pathItems.at ( 1 ) ) )
         {
+            kDebug(KIO_MTP) << "storages!!!!!!!!!!!!!!!!!!!";
+
             LIBMTP_devicestorage_t *storage = storages.value ( pathItems.at ( 1 ) );
 
             if ( pathItems.size() == 2 )
             {
                 ret.first = storage;
                 ret.second = device;
+
+                return ret;
             }
 
             int currentLevel = 2, currentParent = 0xFFFFFFFF;
 
-            QMap<QString, uint32_t> files;
+            QMap<QString, LIBMTP_file_t*> files;
 
             // traverse further while depth not reached
             while ( currentLevel < pathItems.size() )
@@ -177,7 +183,7 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
 
                 if ( files.contains ( pathItems.at ( currentLevel ) ) )
                 {
-                    currentParent = files.value ( pathItems.at ( currentLevel ) );
+                    currentParent = files.value ( pathItems.at ( currentLevel ) )->item_id;
                 }
                 else
                 {
@@ -282,89 +288,88 @@ void MTPSlave::listDir ( const KUrl& url )
     // traverse into device
     else if ( devices.contains ( pathItems.at ( 0 ) ) )
     {
-        LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached ( devices.value ( pathItems.at ( 0 ) ) );
+        QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath ( url.path() );
+        UDSEntry entry;
 
-        QMap<QString, LIBMTP_devicestorage_t*> storages = getDevicestorages ( device );
-
-        // list storages
-        if ( pathItems.size() == 1 )
+        if ( pair.first )
         {
-            kDebug ( KIO_MTP ) << "Listing storages for device " << pathItems.at ( 0 );
-            totalSize ( storages.size() );
+            LIBMTP_mtpdevice_t *device = pair.second;
 
-            foreach ( const QString &storageName, storages.keys() )
+            // Device, list storages
+            if ( pathItems.size() == 1 )
             {
-                getEntry ( entry, storages.value ( storageName ) );
+                QMap<QString, LIBMTP_devicestorage_t*> storages = getDevicestorages ( device );
 
-                listEntry ( entry, false );
-                entry.clear();
-            }
+                kDebug ( KIO_MTP ) << "Listing storages for device " << pathItems.at ( 0 );
+                totalSize ( storages.size() );
 
-            listEntry ( entry, true );
-
-            kDebug ( KIO_MTP ) << "[SUCCESS] :: Storages";
-            finished();
-        }
-        // traverse into storage
-        else if ( storages.contains ( pathItems.at ( 1 ) ) )
-        {
-            LIBMTP_devicestorage_t *storage = storages.value ( pathItems.at ( 1 ) );
-
-            int currentLevel = 2, currentParent = 0xFFFFFFFF;
-
-            QMap<QString, uint32_t> fileMap = getFiles ( device, storage->id, currentParent );
-
-            // traverse further while depth not reached
-            while ( currentLevel < pathItems.size() )
-            {
-                if ( fileMap.contains ( pathItems.at ( currentLevel ) ) )
+                foreach ( const QString &storageName, storages.keys() )
                 {
-                    // set new parent and get filelisting
-                    currentParent = fileMap.value ( pathItems.at ( currentLevel++ ) );
-                    fileMap = getFiles ( device, storage->id, currentParent );
+                    getEntry ( entry, storages.value ( storageName ) );
+
+                    listEntry ( entry, false );
+                    entry.clear();
+                }
+
+                listEntry ( entry, true );
+
+                kDebug ( KIO_MTP ) << "[SUCCESS] :: Storages";
+            }
+            // Storage, list files and folders of storage root
+            else
+            {
+                QMap<QString, LIBMTP_file_t*> files;
+
+                if ( pathItems.size() == 2 )
+                {
+                    kDebug(KIO_MTP) << "Getting storage root listing";
+
+                    LIBMTP_devicestorage_t *storage = (LIBMTP_devicestorage_t*)pair.first;
+
+                    kDebug(KIO_MTP) << "We have a storage:" << (storage == NULL);
+
+                    files = getFiles( device, storage->id );
                 }
                 else
                 {
-                    error ( ERR_CANNOT_ENTER_DIRECTORY, url.path() );
-                    return;
+                    LIBMTP_file_t *parent = (LIBMTP_file_t*)pair.first;
+
+                    files = getFiles( device, parent->storage_id, parent->item_id );
                 }
+
+                for ( QMap<QString, LIBMTP_file_t*>::iterator it = files.begin(); it != files.end(); it++ )
+                {
+                    LIBMTP_file_t *file = it.value();
+
+                    QString filePath = url.path( KUrl::AddTrailingSlash ).append( it.key() );
+                    fileCache->addPath( filePath, file->item_id );
+
+                    getEntry ( entry, file );
+
+                    listEntry ( entry, false );
+                    entry.clear();
+                }
+
+                listEntry ( entry, true );
+
+                kDebug ( KIO_MTP ) << "[SUCCESS] Files";
             }
 
-            kDebug ( KIO_MTP ) << "Showing" << fileMap.size() << "files";
-            totalSize ( fileMap.size() );
+            LIBMTP_Release_Device ( pair.second );
 
-            for ( QMap<QString, uint32_t>::iterator it = fileMap.begin(); it != fileMap.end(); it++ )
-            {
-                LIBMTP_file_t *file = LIBMTP_Get_Filemetadata ( device, it.value() );
-
-                QString filePath = url.path ( KUrl::AddTrailingSlash );
-                filePath.append ( it.key() );
-                fileCache->addPath ( filePath, it.value() );
-
-                getEntry ( entry, file );
-
-                listEntry ( entry, false );
-                entry.clear();
-            }
-
-            listEntry ( entry, true );
-
-            kDebug ( KIO_MTP ) << "[SUCCESS] Files";
             finished();
         }
         else
         {
             error ( ERR_CANNOT_ENTER_DIRECTORY, url.path() );
+            kDebug ( KIO_MTP ) << "[ERROR]";
         }
-
-        LIBMTP_Release_Device ( device );
     }
     else
     {
         error ( ERR_CANNOT_ENTER_DIRECTORY, url.path() );
+        kDebug ( KIO_MTP ) << "[ERROR]";
     }
-
-    kDebug ( KIO_MTP ) << "[ERROR]";
 }
 
 void MTPSlave::stat ( const KUrl& url )

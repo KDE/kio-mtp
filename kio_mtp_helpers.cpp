@@ -402,30 +402,29 @@ QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages ( LIBMTP_mtpdevice_t *&
             else
                 storagename = QString::fromUtf8 ( storageIdentifier );
 
-//             kDebug(KIO_MTP) << "found storage" << storagename;
+            kDebug(KIO_MTP) << "found storage" << storagename;
 
             storages.insert ( storagename, storage );
         }
     }
 
-    kDebug ( KIO_MTP ) << "[EXIT]";
+    kDebug ( KIO_MTP ) << "[EXIT]" << storages.size();
 
     return storages;
 }
 
-QMap<QString, uint32_t> getFiles ( LIBMTP_mtpdevice_t *&device, uint32_t storage_id, uint32_t parent_id = 0xFFFFFFFF )
+QMap<QString, LIBMTP_file_t*> getFiles ( LIBMTP_mtpdevice_t *&device, uint32_t storage_id, uint32_t parent_id = 0xFFFFFFFF )
 {
     kDebug ( KIO_MTP ) << "getFiles() for parent" << parent_id;
 
-    QMap<QString, uint32_t> fileMap;
+    QMap<QString, LIBMTP_file_t*> fileMap;
 
     LIBMTP_file_t *files = LIBMTP_Get_Files_And_Folders ( device, storage_id, parent_id ), *file;
     for ( file = files; file != NULL; file = file->next )
     {
-        fileMap.insert ( QString::fromUtf8 ( file->filename ), file->item_id );
+        fileMap.insert ( QString::fromUtf8 ( file->filename ), file );
 //         kDebug(KIO_MTP) << "found file" << file->filename;
     }
-    LIBMTP_destroy_file_t( files );
 
     kDebug ( KIO_MTP ) << "[EXIT]";
 
