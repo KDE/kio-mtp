@@ -1,0 +1,75 @@
+/*
+    <one line to give the program's name and a brief idea of what it does.>
+    Copyright (C) 2012  Philipp Schmidt <philschmidt@gmx.net>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
+
+#ifndef FILECACHE_H
+#define FILECACHE_H
+
+#define KIO_MTP                     7000
+
+#include <stdint.h>
+
+#include <QDateTime>
+#include <QHash>
+#include <QPair>
+#include <QThread>
+
+// TODO Maybe Refactor into single instance, DBus-activated helper program, make this class an interface to accessing the DBus helper
+
+/**
+ * @class FileCache Implements a time based cache for file ids, mapping their path to their ID. Does _not_ store the device they are on.
+ */
+class FileCache : public QThread
+{
+    Q_OBJECT
+
+private:
+    QHash<QString, QPair<QDateTime, uint32_t> > cache;
+
+private slots:
+    void insertItem( const QString& path, QPair<QDateTime, uint32_t> item );
+    void removeItem( const QString& path );
+
+signals:
+    void s_insertItem( const QString& path, QPair<QDateTime, uint32_t> item );
+    void s_removeItem( const QString& path );
+
+public:
+    explicit FileCache ( QObject* parent = 0 );
+
+    /**
+     * Returns the ID of the item at the given path, else 0
+     *
+     * @param path The Path to query the cache for
+     * @return The ID of the Item if it exists, else 0
+     */
+    uint32_t queryPath( const QString& path, int timeToLive = 60 );
+
+    /**
+     *
+     */
+    void addPath( const QString& path, uint32_t id, int timeToLive = 60 );
+
+    /**
+     *
+     */
+    void removePath (const QString& path );
+};
+
+#endif // FILECACHE_H
