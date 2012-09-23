@@ -21,6 +21,14 @@
 
 #include <libmtp.h>
 
+
+#ifdef __GNUC__
+#define UNUSED __attribute__ ((unused))
+#else
+#define UNUSED
+#endif
+
+
 int dataProgress ( uint64_t const sent, uint64_t const, void const *const priv )
 {
     ( ( MTPSlave* ) priv )->processedSize ( sent );
@@ -31,7 +39,7 @@ int dataProgress ( uint64_t const sent, uint64_t const, void const *const priv )
 /**
  * MTPDataPutFunc callback function, "puts" data from the device somewhere else
  */
-uint16_t dataPut ( void *params, void *priv, uint32_t sendlen, unsigned char *data, uint32_t *putlen )
+uint16_t dataPut ( void*, void *priv, uint32_t sendlen, unsigned char *data, uint32_t *putlen )
 {
     //     kDebug(KIO_MTP) << "transferring" << sendlen << "bytes to data()";
     ( ( MTPSlave* ) priv )->data ( QByteArray ( ( char* ) data, ( int ) sendlen ) );
@@ -43,7 +51,7 @@ uint16_t dataPut ( void *params, void *priv, uint32_t sendlen, unsigned char *da
 /**
  * MTPDataGetFunc callback function, "gets" data and puts it on the device
  */
-uint16_t dataGet ( void *params, void *priv, uint32_t wantlen, unsigned char *data, uint32_t *gotlen )
+uint16_t dataGet ( void*, void *priv, uint32_t, UNUSED unsigned char *data, uint32_t *gotlen )
 {
     //     kDebug(KIO_MTP) << "transferring" << sendlen << "bytes to data()";
     ( ( MTPSlave* ) priv )->dataReq();
@@ -54,6 +62,19 @@ uint16_t dataGet ( void *params, void *priv, uint32_t wantlen, unsigned char *da
     data = ( unsigned char* ) buffer.data();
 
     return LIBMTP_HANDLER_RETURN_OK;
+}
+
+QString convertToPath( const QStringList& pathItems, const int elements )
+{
+    QString path;
+
+    for ( int i = 0; i < elements && elements <= pathItems.size(); i++ )
+    {
+        path.append( "/" );
+        path.append( pathItems.at(i) );
+    }
+
+    return path;
 }
 
 QString getMimetype ( LIBMTP_filetype_t filetype )

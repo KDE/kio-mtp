@@ -23,6 +23,7 @@
 #include <KTemporaryFile>
 #include <QFileInfo>
 #include <QDateTime>
+#include <QCoreApplication>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -43,6 +44,8 @@ int KDE_EXPORT kdemain ( int argc, char **argv )
 
     KGlobal::locale();
 
+    QCoreApplication app( argc, argv );
+
     if ( argc != 4 )
     {
         fprintf ( stderr, "Usage: kio_mtp protocol domain-socket1 domain-socket2\n" );
@@ -57,9 +60,12 @@ int KDE_EXPORT kdemain ( int argc, char **argv )
 MTPSlave::MTPSlave ( const QByteArray& pool, const QByteArray& app )
     : SlaveBase ( "mtp", pool, app )
 {
-    kDebug ( KIO_MTP ) << "Slave started";
-
     LIBMTP_Init();
+
+    fileCache = new FileCache ( this );
+    fileCache->start();
+
+    kDebug ( KIO_MTP ) << "Slave started";
 }
 
 MTPSlave::~MTPSlave()
@@ -99,19 +105,52 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
             ret.second = device;
         }
 
-        // Query Cache after we have the device
-        if ( pathItems.size() > 2 && fileCache.contains( path ) )
+        if ( pathItems.size() > 2 )
         {
-            kDebug() << "Found possible match, checking ID" << fileCache.value( path ) << "on device";
-
-            LIBMTP_file_t* file = LIBMTP_Get_Filemetadata( device, fileCache.value( path ) );
-            if ( file )
+            // Query Cache after we have the device
+            uint32_t c_fileID = fileCache->queryPath ( path );
+            if ( c_fileID != 0 )
             {
-                kDebug ( KIO_MTP ) << "Found item in cache";
-                ret.first = file;
-                ret.second = device;
+                kDebug() << "Match found in cache, checking device";
 
-                return ret;
+                LIBMTP_file_t* file = LIBMTP_Get_Filemetadata ( device, c_fileID );
+                if ( file )
+                {
+                    kDebug ( KIO_MTP ) << "Found file in cache";
+                    ret.first = file;
+                    ret.second = device;
+
+                    return ret;
+                }
+            }
+            // Query cache for parent
+            else if ( pathItems.size() > 3 )
+            {
+                QString parentPath = convertToPath ( pathItems, pathItems.size() - 1 );
+                uint32_t c_parentID = fileCache->queryPath ( parentPath );
+
+                kDebug() << "Match for parent found in cache, checking device";
+
+                LIBMTP_file_t* file = LIBMTP_Get_Filemetadata ( device, c_parentID );
+                if ( file )
+                {
+                    kDebug ( KIO_MTP ) << "Found parent in cache";
+                    fileCache->addPath( parentPath, c_parentID );
+
+                    QMap<QString, uint32_t> files = getFiles ( device, file->storage_id, c_parentID );
+
+                    if ( files.contains ( pathItems.last() ) )
+                    {
+                        file = LIBMTP_Get_Filemetadata ( device, files.value( pathItems.last() ) );
+
+                        ret.first = file;
+                        ret.second = device;
+
+                        fileCache->addPath( path, file->item_id );
+                    }
+
+                    return ret;
+                }
             }
         }
 
@@ -147,10 +186,10 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
                 currentLevel++;
             }
 
-            ret.first = LIBMTP_Get_Filemetadata( device, currentParent );
+            ret.first = LIBMTP_Get_Filemetadata ( device, currentParent );
             ret.second = device;
 
-            fileCache.insert( path, currentParent );
+            fileCache->addPath ( path, currentParent );
         }
     }
 
@@ -296,11 +335,11 @@ void MTPSlave::listDir ( const KUrl& url )
 
             for ( QMap<QString, uint32_t>::iterator it = fileMap.begin(); it != fileMap.end(); it++ )
             {
-                LIBMTP_file_t *file = LIBMTP_Get_Filemetadata( device, it.value() );
+                LIBMTP_file_t *file = LIBMTP_Get_Filemetadata ( device, it.value() );
 
-                QString filePath = url.path( KUrl::AddTrailingSlash );
-                filePath.append( it.key() );
-                fileCache.insert( filePath, it.value() );
+                QString filePath = url.path ( KUrl::AddTrailingSlash );
+                filePath.append ( it.key() );
+                fileCache->addPath ( filePath, it.value() );
 
                 getEntry ( entry, file );
 
@@ -403,7 +442,7 @@ void MTPSlave::mimetype ( const KUrl& url )
     }
 }
 
-void MTPSlave::put ( const KUrl& url, int permissions, JobFlags flags )
+void MTPSlave::put ( const KUrl& url, int, JobFlags )
 {
     kDebug ( KIO_MTP ) << url.path();
 
@@ -732,7 +771,7 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
         // Rename Device
         if ( srcItems.size() == 1 )
         {
-            LIBMTP_Set_Friendlyname( pair.second, dest.fileName().toStdString().c_str() );
+            LIBMTP_Set_Friendlyname ( pair.second, dest.fileName().toStdString().c_str() );
         }
         // Rename Storage
         else if ( srcItems.size() == 2 )
@@ -761,7 +800,7 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
     }
     else
     {
-        error( ERR_DOES_NOT_EXIST, src.path() );
+        error ( ERR_DOES_NOT_EXIST, src.path() );
     }
 }
 

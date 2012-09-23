@@ -10,6 +10,7 @@ find_package(Mtp)
 #add_definitions(-DKDE_DEFAULT_DEBUG_AREA=7999)
 
 set( kio_mtp_PART_SRCS
+     filecache.cpp
      kio_mtp.cpp
 )
 
