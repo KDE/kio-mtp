@@ -680,7 +680,7 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags )
 
         totalSize ( source->filesize );
 
-        int ret = LIBMTP_Get_File_To_File ( device, source->item_id, dest.path().toStdString().c_str(), ( LIBMTP_progressfunc_t ) &dataProgress, this );
+        int ret = LIBMTP_Get_File_To_File ( device, source->item_id, dest.path().toUtf8().data(), ( LIBMTP_progressfunc_t ) &dataProgress, this );
         if ( ret != 0 )
         {
             error ( KIO::ERR_COULD_NOT_WRITE, dest.fileName() );
