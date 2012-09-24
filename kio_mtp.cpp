@@ -303,17 +303,23 @@ void MTPSlave::listDir ( const KUrl& url )
                 kDebug ( KIO_MTP ) << "Listing storages for device " << pathItems.at ( 0 );
                 totalSize ( storages.size() );
 
-                foreach ( const QString &storageName, storages.keys() )
+                if ( storages.size() > 0 )
                 {
-                    getEntry ( entry, storages.value ( storageName ) );
+                    foreach ( const QString &storageName, storages.keys() )
+                    {
+                        getEntry ( entry, storages.value ( storageName ) );
 
-                    listEntry ( entry, false );
-                    entry.clear();
+                        listEntry ( entry, false );
+                        entry.clear();
+                    }
+
+                    listEntry ( entry, true );
+                    kDebug ( KIO_MTP ) << "[SUCCESS] :: Storages";
                 }
-
-                listEntry ( entry, true );
-
-                kDebug ( KIO_MTP ) << "[SUCCESS] :: Storages";
+                else
+                {
+                    warning( tr("No Storages found. Maybe you need to unlock your device?") );
+                }
             }
             // Storage, list files and folders of storage root
             else
