@@ -47,7 +47,14 @@ class MTPSlave : public QObject, public KIO::SlaveBase
     Q_OBJECT
 
 private:
-    bool checkUrl( const KUrl& url );
+    /**
+     * Check if it is a valid url or an udi.
+     *
+     * @param url The url to checkUrl
+     * @param redirect If udi= should be redirected or just return false
+     * @return 0 if valid, 1 if udi and redirected, 2 if udi but invalid device, -1 else
+     */
+    int checkUrl( const KUrl& url, bool redirect = true );
     FileCache *fileCache;
     QPair<void*, LIBMTP_mtpdevice_t*> getPath( const QString& path );
 

@@ -202,18 +202,18 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
     return ret;
 }
 
-bool MTPSlave::checkUrl ( const KUrl& url )
+int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
 {
     kDebug ( KIO_MTP ) << url;
 
-    if ( url.path().startsWith ( "udi=" ) )
+    if ( url.path().startsWith ( "udi=" ) && redirect )
     {
         QString udi = url.path().remove ( 0, 4 );
 
         Solid::Device device ( udi );
         if ( !device.isValid() )
         {
-            return false;
+            return 2;
         }
         Solid::GenericInterface *iface = device.as<Solid::GenericInterface>();
         QMap<QString, QVariant> properties = iface->allProperties();
@@ -239,19 +239,33 @@ bool MTPSlave::checkUrl ( const KUrl& url )
                 newUrl.setProtocol ( "mtp" );
                 newUrl.setPath ( QString ( "/" ).append ( deviceName ) );
                 redirection ( newUrl );
-                return true;
+                return 1;
             }
         }
     }
-    return false;
+    else if ( url.path().startsWith("/") )
+    {
+        return 0;
+    }
+    return -1;
 }
 
 void MTPSlave::listDir ( const KUrl& url )
 {
-    if ( checkUrl ( url ) )
+    int check = checkUrl( url );
+    switch ( check )
     {
-        finished();
-        return;
+        case 0:
+            break;
+        case 1:
+            finished();
+            return;
+        case 2:
+            error( ERR_DOES_NOT_EXIST, url.path() );
+            return;
+        default:
+            error( ERR_MALFORMED_URL, url.path() );
+            return;
     }
 
     QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
@@ -380,10 +394,20 @@ void MTPSlave::listDir ( const KUrl& url )
 
 void MTPSlave::stat ( const KUrl& url )
 {
-    if ( checkUrl ( url ) )
+    int check = checkUrl( url );
+    switch ( check )
     {
-        finished();
-        return;
+        case 0:
+            break;
+        case 1:
+            finished();
+            return;
+        case 2:
+            error( ERR_DOES_NOT_EXIST, url.path() );
+            return;
+        default:
+            error( ERR_MALFORMED_URL, url.path() );
+            return;
     }
 
     kDebug ( KIO_MTP ) << url.path();
@@ -427,10 +451,20 @@ void MTPSlave::stat ( const KUrl& url )
 
 void MTPSlave::mimetype ( const KUrl& url )
 {
-    if ( checkUrl ( url ) )
+    int check = checkUrl( url );
+    switch ( check )
     {
-        finished();
-        return;
+        case 0:
+            break;
+        case 1:
+            finished();
+            return;
+        case 2:
+            error( ERR_DOES_NOT_EXIST, url.path() );
+            return;
+        default:
+            error( ERR_MALFORMED_URL, url.path() );
+            return;
     }
 
     kDebug ( KIO_MTP ) << url.path();
@@ -455,6 +489,16 @@ void MTPSlave::mimetype ( const KUrl& url )
 
 void MTPSlave::put ( const KUrl& url, int, JobFlags )
 {
+    int check = checkUrl( url );
+    switch ( check )
+    {
+        case 0:
+            break;
+        default:
+            error( ERR_MALFORMED_URL, url.path() );
+            return;
+    }
+
     kDebug ( KIO_MTP ) << url.path();
 
     QStringList destItems = url.path().split ( '/', QString::SkipEmptyParts );
@@ -548,6 +592,16 @@ void MTPSlave::put ( const KUrl& url, int, JobFlags )
 
 void MTPSlave::get ( const KUrl& url )
 {
+    int check = checkUrl( url );
+    switch ( check )
+    {
+        case 0:
+            break;
+        default:
+            error( ERR_MALFORMED_URL, url.path() );
+            return;
+    }
+
     kDebug ( KIO_MTP ) << url.path();
 
     QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
@@ -599,6 +653,16 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags )
     // file:/// tp mtp:///
     if ( src.protocol() == "file" && dest.protocol() == "mtp" )
     {
+        int check = checkUrl( dest );
+        switch ( check )
+        {
+            case 0:
+                break;
+            default:
+                error( ERR_MALFORMED_URL, dest.path() );
+                return;
+        }
+
         QStringList destItems = dest.path().split ( '/', QString::SkipEmptyParts );
 
         // Can't copy to root or device, needs storage
@@ -655,6 +719,16 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags )
     // mtp:/// to file:///
     if ( src.protocol() == "mtp" && dest.protocol() == "file" )
     {
+        int check = checkUrl( src );
+        switch ( check )
+        {
+            case 0:
+                break;
+            default:
+                error( ERR_MALFORMED_URL, src.path() );
+                return;
+        }
+
         kDebug ( KIO_MTP ) << "Copy file " << src.fileName() << "from device to filesystem" << src.directory ( KUrl::AppendTrailingSlash ) << dest.directory ( KUrl::AppendTrailingSlash );
 
         QStringList srcItems = src.path().split ( '/', QString::SkipEmptyParts );
@@ -697,6 +771,16 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags )
 
 void MTPSlave::mkdir ( const KUrl& url, int )
 {
+    int check = checkUrl( url );
+    switch ( check )
+    {
+        case 0:
+            break;
+        default:
+            error( ERR_MALFORMED_URL, url.path() );
+            return;
+    }
+
     kDebug ( KIO_MTP ) << url.path();
 
     QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
@@ -744,6 +828,16 @@ void MTPSlave::mkdir ( const KUrl& url, int )
 
 void MTPSlave::del ( const KUrl& url, bool )
 {
+    int check = checkUrl( url );
+    switch ( check )
+    {
+        case 0:
+            break;
+        default:
+            error( ERR_MALFORMED_URL, url.path() );
+            return;
+    }
+
     kDebug ( KIO_MTP ) << url.path();
 
     QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
@@ -775,6 +869,26 @@ void MTPSlave::del ( const KUrl& url, bool )
 
 void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
 {
+    int check = checkUrl( src );
+    switch ( check )
+    {
+        case 0:
+            break;
+        default:
+            error( ERR_MALFORMED_URL, src.path() );
+            return;
+    }
+    check = checkUrl( dest );
+    switch ( check )
+    {
+        case 0:
+            break;
+        default:
+            error( ERR_MALFORMED_URL, dest.path() );
+            return;
+    }
+
+
     kDebug ( KIO_MTP ) << src.path();
 
     QStringList srcItems = src.path().split ( '/', QString::SkipEmptyParts );
