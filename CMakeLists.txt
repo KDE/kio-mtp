@@ -28,6 +28,6 @@ install( TARGETS kio_mtp DESTINATION ${PLUGIN_INSTALL_DIR} )
 ########### install files ###############
 
 install( FILES mtp-network.desktop  DESTINATION  ${DATA_INSTALL_DIR}/konqueror/dirtree/remote )
+install( FILES solid_mtp.desktop  DESTINATION  ${DATA_INSTALL_DIR}/solid/actions )
 install( FILES mtp.protocol  DESTINATION  ${SERVICES_INSTALL_DIR} )
 install( FILES mtp-network.desktop  DESTINATION  ${DATA_INSTALL_DIR}/remoteview )
-

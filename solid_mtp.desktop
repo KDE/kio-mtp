@@ -1,0 +1,9 @@
+[Desktop Entry]
+X-KDE-Solid-Predicate=PortableMediaPlayer.supportedProtocols == 'mtp'
+Type=Service
+Actions=open;
+
+[Desktop Action open]
+Exec=kioclient exec mtp:/
+Icon=system-file-manager
+Name=Open with File Manager
