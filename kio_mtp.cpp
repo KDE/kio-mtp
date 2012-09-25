@@ -223,7 +223,7 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
         int busnum = properties.value ( "BUSNUM" ).toInt();
         int devnum = properties.value ( "DEVNUM" ).toInt();
 
-        kDebug ( KIO_MTP ) << "UDI reports DUS/DEV:" << busnum << "/" << devnum;
+        kDebug ( KIO_MTP ) << "UDI reports BUS/DEV:" << busnum << "/" << devnum;
 
         QMap<QString, LIBMTP_raw_device_t*> devices = getRawDevices();
 
@@ -233,7 +233,7 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
             int currentBusNum = rawDevice->bus_location;
             int currentDevNum = rawDevice->devnum;
 
-            kDebug ( KIO_MTP ) << "LIBMTP has DUS/DEV:"<< currentBusNum << "/" << currentDevNum;
+            kDebug ( KIO_MTP ) << "LIBMTP has BUS/DEV:"<< currentBusNum << "/" << currentDevNum;
 
             if ( currentBusNum == busnum && currentDevNum == devnum )
             {
