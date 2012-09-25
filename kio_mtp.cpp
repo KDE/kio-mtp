@@ -726,6 +726,7 @@ void MTPSlave::mkdir ( const KUrl& url, int )
                     finished();
                     return;
                 }
+                fileCache->addPath( url.path(), ret );
 
                 LIBMTP_Dump_Errorstack ( device );
                 LIBMTP_Clear_Errorstack ( device );
@@ -767,6 +768,8 @@ void MTPSlave::del ( const KUrl& url, bool )
         error ( ERR_CANNOT_DELETE, url.path() );
         return;
     }
+
+    fileCache->removePath( url.path() );
     finished();
 }
 
@@ -798,15 +801,21 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
 
             int ret = LIBMTP_Set_File_Name ( pair.second, file, dest.fileName().toStdString().c_str() );
 
-            LIBMTP_destroy_file_t ( file );
-            LIBMTP_Release_Device ( pair.second );
-
             if ( ret != 0 )
             {
                 error ( ERR_CANNOT_RENAME, src.path() );
                 return;
             }
+            else
+            {
+                fileCache->addPath( dest.path(), file->item_id );
+                fileCache->removePath( src.path() );
+            }
+
+            LIBMTP_destroy_file_t ( file );
+            LIBMTP_Release_Device ( pair.second );
         }
+
         finished();
     }
     else

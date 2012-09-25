@@ -71,6 +71,8 @@ public:
 
     /**
      * Remove the given path from the cache, i.e. if it got deleted
+     *
+     * @param path The path that should be removed
      */
     void removePath (const QString& path );
 };
