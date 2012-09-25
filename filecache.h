@@ -30,8 +30,6 @@
 #include <QPair>
 #include <QThread>
 
-// TODO Maybe Refactor into single instance, DBus-activated helper program, make this class an interface to accessing the DBus helper
-
 /**
  * @class FileCache Implements a time based cache for file ids, mapping their path to their ID. Does _not_ store the device they are on.
  */
@@ -54,7 +52,8 @@ public:
     explicit FileCache ( QObject* parent = 0 );
 
     /**
-     * Returns the ID of the item at the given path, else 0
+     * Returns the ID of the item at the given path, else 0.
+     * Automatically discards old items.
      *
      * @param path The Path to query the cache for
      * @return The ID of the Item if it exists, else 0
@@ -62,12 +61,16 @@ public:
     uint32_t queryPath( const QString& path, int timeToLive = 60 );
 
     /**
+     * Adds a Path to the Cache with the given id and ttl.
      *
+     * @param path The path of the file/folder
+     * @param id The file ID on the storage
+     * @param timeToLive The time in seconds the entry should be valid
      */
     void addPath( const QString& path, uint32_t id, int timeToLive = 60 );
 
     /**
-     *
+     * Remove the given path from the cache, i.e. if it got deleted
      */
     void removePath (const QString& path );
 };
