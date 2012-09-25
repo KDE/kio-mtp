@@ -4,6 +4,6 @@ Type=Service
 Actions=open;
 
 [Desktop Action open]
-Exec=kioclient exec mtp:/
+Exec=kioclient exec mtp:udi=%i/
 Icon=system-file-manager
 Name=Open with File Manager
