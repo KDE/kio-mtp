@@ -1,7 +1,8 @@
 [Desktop Entry]
-Icon=multimedia-device
-Name=MTP Device
+Icon=multimedia-player
+Name=MTP Devices
 Name[cs]=Zařízení MTP
+Name[de]=MTP Geräte
 Name[ga]=Gléas MTP
 Name[nl]=MTP-apparaat
 Name[pt]=Dispositivo MTP
