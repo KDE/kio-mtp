@@ -208,7 +208,9 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
 
     if ( url.path().startsWith ( "udi=" ) && redirect )
     {
-        QString udi = url.path().remove ( 0, 4 );
+        QString udi = url.path( KUrl::RemoveTrailingSlash ).remove ( 0, 4 );
+
+        kDebug ( KIO_MTP ) << "udi = " << udi;
 
         Solid::Device device ( udi );
         if ( !device.isValid() )
@@ -221,7 +223,7 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
         int busnum = properties.value ( "BUSNUM" ).toInt();
         int devnum = properties.value ( "DEVNUM" ).toInt();
 
-        kDebug ( KIO_MTP ) << "From UDI:" << busnum << devnum;
+        kDebug ( KIO_MTP ) << "UDI reports DUS/DEV:" << busnum << "/" << devnum;
 
         QMap<QString, LIBMTP_raw_device_t*> devices = getRawDevices();
 
@@ -231,7 +233,7 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
             int currentBusNum = rawDevice->bus_location;
             int currentDevNum = rawDevice->devnum;
 
-            kDebug ( KIO_MTP ) << "From LIBMTP:"<< currentBusNum << currentDevNum;
+            kDebug ( KIO_MTP ) << "LIBMTP has DUS/DEV:"<< currentBusNum << "/" << currentDevNum;
 
             if ( currentBusNum == busnum && currentDevNum == devnum )
             {
@@ -239,6 +241,7 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
                 newUrl.setProtocol ( "mtp" );
                 newUrl.setPath ( QString ( "/" ).append ( deviceName ) );
                 redirection ( newUrl );
+
                 return 1;
             }
         }
@@ -252,6 +255,8 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
 
 void MTPSlave::listDir ( const KUrl& url )
 {
+    kDebug ( KIO_MTP ) << url.path();
+
     int check = checkUrl( url );
     switch ( check )
     {
@@ -269,8 +274,6 @@ void MTPSlave::listDir ( const KUrl& url )
     }
 
     QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
-
-    kDebug ( KIO_MTP ) << url.path();
 
     UDSEntry entry;
 
@@ -394,6 +397,8 @@ void MTPSlave::listDir ( const KUrl& url )
 
 void MTPSlave::stat ( const KUrl& url )
 {
+    kDebug ( KIO_MTP ) << url.path();
+
     int check = checkUrl( url );
     switch ( check )
     {
@@ -409,8 +414,6 @@ void MTPSlave::stat ( const KUrl& url )
             error( ERR_MALFORMED_URL, url.path() );
             return;
     }
-
-    kDebug ( KIO_MTP ) << url.path();
 
     QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
 
