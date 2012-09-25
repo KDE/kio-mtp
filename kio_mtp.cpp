@@ -535,7 +535,7 @@ void MTPSlave::put ( const KUrl& url, int, JobFlags )
 
         LIBMTP_file_t *file = LIBMTP_new_file_t();
         file->parent_id = parent->item_id;
-        file->filename = strdup ( url.fileName().toStdString().c_str() );
+        file->filename = strdup ( url.fileName().toUtf8().data() );
         file->filetype = getFiletype ( url.fileName() );
         file->filesize = metaData ( "sourceSize" ).toULongLong();
         file->modificationdate = QDateTime::currentDateTime().toTime_t();
@@ -573,7 +573,7 @@ void MTPSlave::put ( const KUrl& url, int, JobFlags )
 
         LIBMTP_file_t *file = LIBMTP_new_file_t();
         file->parent_id = parent->item_id;
-        file->filename = strdup ( url.fileName().toStdString().c_str() );
+        file->filename = strdup ( url.fileName().toUtf8().data() );
         file->filetype = getFiletype ( url.fileName() );
         file->filesize = info.size();
         file->modificationdate = QDateTime::currentDateTime().toTime_t();
@@ -697,7 +697,7 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags )
 
         LIBMTP_file_t *file = LIBMTP_new_file_t();
         file->parent_id = parent->item_id;
-        file->filename = strdup ( src.fileName().toStdString().c_str() );
+        file->filename = strdup ( src.fileName().toUtf8().data() );
         file->filetype = getFiletype ( src.fileName() );
         file->filesize = info.size();
         file->modificationdate = info.lastModified().toTime_t();
@@ -707,7 +707,7 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags )
 
         totalSize ( info.size() );
 
-        int ret = LIBMTP_Send_File_From_File ( device, src.path().toStdString().c_str(), file, ( LIBMTP_progressfunc_t ) &dataProgress, this );
+        int ret = LIBMTP_Send_File_From_File ( device, src.path().toUtf8().data(), file, ( LIBMTP_progressfunc_t ) &dataProgress, this );
         if ( ret != 0 )
         {
             error ( KIO::ERR_COULD_NOT_WRITE, dest.fileName() );
@@ -787,7 +787,7 @@ void MTPSlave::mkdir ( const KUrl& url, int )
 
     if ( pathItems.size() > 2 && !getPath ( url.path() ).first )
     {
-        char *dirName = strdup ( pathItems.takeLast().toStdString().c_str() );
+        char *dirName = strdup ( pathItems.takeLast().toUtf8().data() );
 
         LIBMTP_mtpdevice_t *device;
         LIBMTP_file_t *file;
@@ -899,7 +899,7 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
         // Rename Device
         if ( srcItems.size() == 1 )
         {
-            LIBMTP_Set_Friendlyname ( pair.second, dest.fileName().toStdString().c_str() );
+            LIBMTP_Set_Friendlyname ( pair.second, dest.fileName().toUtf8().data() );
         }
         // Rename Storage
         else if ( srcItems.size() == 2 )
@@ -913,7 +913,7 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
 
             LIBMTP_file_t *file = ( LIBMTP_file_t* ) pair.first;
 
-            int ret = LIBMTP_Set_File_Name ( pair.second, file, dest.fileName().toStdString().c_str() );
+            int ret = LIBMTP_Set_File_Name ( pair.second, file, dest.fileName().toUtf8().data() );
 
             if ( ret != 0 )
             {
