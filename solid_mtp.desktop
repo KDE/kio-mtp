@@ -7,4 +7,3 @@ Actions=open;
 Exec=kioclient exec mtp:udi=%i/
 Icon=system-file-manager
 Name=Open with File Manager
-Name[de]=Mit Dateimanager Öffnen
