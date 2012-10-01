@@ -712,13 +712,13 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags )
 
         LIBMTP_file_t *file = LIBMTP_new_file_t();
         file->parent_id = parent->item_id;
-        file->filename = strdup ( src.fileName().toUtf8().data() );
-        file->filetype = getFiletype ( src.fileName() );
+        file->filename = strdup ( dest.fileName().toUtf8().data() );
+        file->filetype = getFiletype ( dest.fileName() );
         file->filesize = source.size();
         file->modificationdate = source.lastModified().toTime_t();
         file->storage_id = parent->storage_id;
 
-        kDebug ( KIO_MTP ) << "Sending file" << file->filename;
+        kDebug ( KIO_MTP ) << "Sending file" << file->filename << "with size" << file->filesize;
 
         totalSize ( source.size() );
 
@@ -730,6 +730,8 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags )
             LIBMTP_Clear_Errorstack ( device );
             return;
         }
+
+        kDebug ( KIO_MTP ) << "Sent file";
     }
     // mtp:/// to file:///
     if ( src.protocol() == "mtp" && dest.protocol() == "file" )
@@ -744,7 +746,7 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags )
                 return;
         }
 
-        kDebug ( KIO_MTP ) << "Copy file " << src.fileName() << "from device to filesystem" << src.directory ( KUrl::AppendTrailingSlash ) << dest.directory ( KUrl::AppendTrailingSlash );
+        kDebug ( KIO_MTP ) << "Copy file " << src.fileName() << "from device to filesystem" << dest.directory ( KUrl::AppendTrailingSlash ) << dest.directory ( KUrl::AppendTrailingSlash );
 
         QFileInfo destination ( dest.path() );
 
