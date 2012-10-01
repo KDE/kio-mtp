@@ -490,7 +490,7 @@ void MTPSlave::mimetype ( const KUrl& url )
     }
 }
 
-void MTPSlave::put ( const KUrl& url, int, JobFlags )
+void MTPSlave::put ( const KUrl& url, int, JobFlags flags )
 {
     int check = checkUrl( url );
     switch ( check )
@@ -510,6 +510,12 @@ void MTPSlave::put ( const KUrl& url, int, JobFlags )
     if ( destItems.size() < 2 )
     {
         error ( ERR_UNSUPPORTED_ACTION, url.path() );
+        return;
+    }
+
+    if ( !(flags & KIO::Overwrite) && getPath( url.path() ).first )
+    {
+        error( ERR_FILE_ALREADY_EXIST, url.path() );
         return;
     }
 
@@ -884,7 +890,7 @@ void MTPSlave::del ( const KUrl& url, bool )
     finished();
 }
 
-void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
+void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags flags )
 {
     int check = checkUrl( src );
     switch ( check )
@@ -926,11 +932,23 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
         }
         else
         {
-            QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath ( src.path() );
+            LIBMTP_file_t *destination = ( LIBMTP_file_t* ) getPath ( dest.path() ).first;
+            LIBMTP_file_t *source = ( LIBMTP_file_t* ) pair.first;
 
-            LIBMTP_file_t *file = ( LIBMTP_file_t* ) pair.first;
+            if ( !(flags & KIO::Overwrite) && destination )
+            {
+                if ( destination->filetype == LIBMTP_FILETYPE_FOLDER )
+                {
+                    error( ERR_DIR_ALREADY_EXIST, dest.path() );
+                }
+                else
+                {
+                    error( ERR_FILE_ALREADY_EXIST, dest.path() );
+                }
+                return;
+            }
 
-            int ret = LIBMTP_Set_File_Name ( pair.second, file, dest.fileName().toUtf8().data() );
+            int ret = LIBMTP_Set_File_Name ( pair.second, source, dest.fileName().toUtf8().data() );
 
             if ( ret != 0 )
             {
@@ -939,11 +957,11 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags )
             }
             else
             {
-                fileCache->addPath( dest.path(), file->item_id );
+                fileCache->addPath( dest.path(), source->item_id );
                 fileCache->removePath( src.path() );
             }
 
-            LIBMTP_destroy_file_t ( file );
+            LIBMTP_destroy_file_t ( source );
             LIBMTP_Release_Device ( pair.second );
         }
 

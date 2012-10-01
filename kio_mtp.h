@@ -69,11 +69,11 @@ public:
     virtual void stat ( const KUrl& url );
     virtual void mimetype ( const KUrl& url );
     virtual void get ( const KUrl& url );
-    virtual void put ( const KUrl& url, int permissions, JobFlags flags );
+    virtual void put ( const KUrl& url, int, JobFlags flags );
     virtual void copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags );
     virtual void mkdir ( const KUrl& url, int );
     virtual void del ( const KUrl& url, bool );
-    virtual void rename ( const KUrl& src, const KUrl& dest, JobFlags );
+    virtual void rename ( const KUrl& src, const KUrl& dest, JobFlags flags );
 };
 
 #endif  //#endif KIO_MTP_H
