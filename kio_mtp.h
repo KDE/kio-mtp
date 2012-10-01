@@ -70,7 +70,7 @@ public:
     virtual void mimetype ( const KUrl& url );
     virtual void get ( const KUrl& url );
     virtual void put ( const KUrl& url, int permissions, JobFlags flags );
-    virtual void copy ( const KUrl& src, const KUrl& dest, int, JobFlags );
+    virtual void copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags );
     virtual void mkdir ( const KUrl& url, int );
     virtual void del ( const KUrl& url, bool );
     virtual void rename ( const KUrl& src, const KUrl& dest, JobFlags );

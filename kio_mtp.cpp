@@ -641,7 +641,7 @@ void MTPSlave::get ( const KUrl& url )
         error ( ERR_UNSUPPORTED_ACTION, url.path() );
 }
 
-void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags )
+void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags )
 {
     kDebug ( KIO_MTP ) << src.path() << dest.path();
 
@@ -677,6 +677,12 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags )
 
         kDebug ( KIO_MTP ) << "Copy file " << src.fileName() << "from filesystem to device" << src.directory ( KUrl::AppendTrailingSlash ) << dest.directory ( KUrl::AppendTrailingSlash );
 
+        if ( !(flags & KIO::Overwrite) && getPath( dest.path() ).first )
+        {
+            error( ERR_FILE_ALREADY_EXIST, dest.path() );
+            return;
+        }
+
         destItems.takeLast();
 
         QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath ( dest.directory() );
@@ -696,19 +702,19 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags )
             return;
         }
 
-        QFileInfo info ( src.path() );
+        QFileInfo source ( src.path() );
 
         LIBMTP_file_t *file = LIBMTP_new_file_t();
         file->parent_id = parent->item_id;
         file->filename = strdup ( src.fileName().toUtf8().data() );
         file->filetype = getFiletype ( src.fileName() );
-        file->filesize = info.size();
-        file->modificationdate = info.lastModified().toTime_t();
+        file->filesize = source.size();
+        file->modificationdate = source.lastModified().toTime_t();
         file->storage_id = parent->storage_id;
 
         kDebug ( KIO_MTP ) << "Sending file" << file->filename;
 
-        totalSize ( info.size() );
+        totalSize ( source.size() );
 
         int ret = LIBMTP_Send_File_From_File ( device, src.path().toUtf8().data(), file, ( LIBMTP_progressfunc_t ) &dataProgress, this );
         if ( ret != 0 )
@@ -733,6 +739,14 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags )
         }
 
         kDebug ( KIO_MTP ) << "Copy file " << src.fileName() << "from device to filesystem" << src.directory ( KUrl::AppendTrailingSlash ) << dest.directory ( KUrl::AppendTrailingSlash );
+
+        QFileInfo destination ( dest.path() );
+
+        if ( !(flags & KIO::Overwrite) && destination.exists() )
+        {
+            error( ERR_FILE_ALREADY_EXIST, dest.path() );
+            return;
+        }
 
         QStringList srcItems = src.path().split ( '/', QString::SkipEmptyParts );
 
