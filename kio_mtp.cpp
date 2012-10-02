@@ -82,7 +82,7 @@ MTPSlave::~MTPSlave()
  */
 QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
 {
-    QStringList pathItems = path.split ( '/', QString::SkipEmptyParts );
+    QStringList pathItems = path.split ( QLatin1Char ( '/' ), QString::SkipEmptyParts );
 
     kDebug ( KIO_MTP ) << path << pathItems.size();
 
@@ -206,7 +206,7 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
 {
     kDebug ( KIO_MTP ) << url;
 
-    if ( url.path().startsWith ( "udi=" ) && redirect )
+    if ( url.path().startsWith ( QLatin1String ( "udi=" ) ) && redirect )
     {
         QString udi = url.path( KUrl::RemoveTrailingSlash ).remove ( 0, 4 );
 
@@ -220,8 +220,8 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
         Solid::GenericInterface *iface = device.as<Solid::GenericInterface>();
         QMap<QString, QVariant> properties = iface->allProperties();
 
-        int busnum = properties.value ( "BUSNUM" ).toInt();
-        int devnum = properties.value ( "DEVNUM" ).toInt();
+        int busnum = properties.value ( QLatin1String ( "BUSNUM" ) ).toInt();
+        int devnum = properties.value ( QLatin1String ( "DEVNUM" ) ).toInt();
 
         kDebug ( KIO_MTP ) << "UDI reports BUS/DEV:" << busnum << "/" << devnum;
 
@@ -238,15 +238,15 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
             if ( currentBusNum == busnum && currentDevNum == devnum )
             {
                 KUrl newUrl;
-                newUrl.setProtocol ( "mtp" );
-                newUrl.setPath ( QString ( "/" ).append ( deviceName ) );
+                newUrl.setProtocol ( QLatin1String ( "mtp" ) );
+                newUrl.setPath ( QLatin1Char ( '/' ) + deviceName );
                 redirection ( newUrl );
 
                 return 1;
             }
         }
     }
-    else if ( url.path().startsWith("/") )
+    else if ( url.path().startsWith(QLatin1Char ( '/' ) ) )
     {
         return 0;
     }
@@ -273,7 +273,7 @@ void MTPSlave::listDir ( const KUrl& url )
             return;
     }
 
-    QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
+    QStringList pathItems = url.path().split ( QLatin1Char ( '/' ), QString::SkipEmptyParts );
 
     UDSEntry entry;
 
@@ -415,7 +415,7 @@ void MTPSlave::stat ( const KUrl& url )
             return;
     }
 
-    QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
+    QStringList pathItems = url.path().split ( QLatin1Char ( '/' ), QString::SkipEmptyParts );
 
     QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath ( url.path() );
     UDSEntry entry;
@@ -425,10 +425,10 @@ void MTPSlave::stat ( const KUrl& url )
         // Root
         if ( pathItems.size() < 1 )
         {
-            entry.insert ( UDSEntry::UDS_NAME, "mtp:///" );
+            entry.insert ( UDSEntry::UDS_NAME, QLatin1String ( "mtp:///" ) );
             entry.insert ( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
             entry.insert ( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
-            entry.insert ( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+            entry.insert ( UDSEntry::UDS_MIME_TYPE, QLatin1String ( "inode/directory" ) );
         }
         // Device
         else if ( pathItems.size() < 2 )
@@ -472,7 +472,7 @@ void MTPSlave::mimetype ( const KUrl& url )
 
     kDebug ( KIO_MTP ) << url.path();
 
-    QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
+    QStringList pathItems = url.path().split ( QLatin1Char ( '/' ), QString::SkipEmptyParts );
 
     QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath ( url.path() );
 
@@ -481,7 +481,7 @@ void MTPSlave::mimetype ( const KUrl& url )
         if ( pathItems.size() > 2 )
             mimetype ( getMimetype ( ( ( LIBMTP_file_t* ) pair.first )->filetype ) );
         else
-            mimetype ( QString ( "inode/directory" ) );
+            mimetype ( QString::fromLatin1 ( "inode/directory" ) );
     }
     else
     {
@@ -504,7 +504,7 @@ void MTPSlave::put ( const KUrl& url, int, JobFlags flags )
 
     kDebug ( KIO_MTP ) << url.path();
 
-    QStringList destItems = url.path().split ( '/', QString::SkipEmptyParts );
+    QStringList destItems = url.path().split ( QLatin1Char ( '/' ), QString::SkipEmptyParts );
 
     // Can't copy to root or device, needs storage
     if ( destItems.size() < 2 )
@@ -538,7 +538,7 @@ void MTPSlave::put ( const KUrl& url, int, JobFlags flags )
     }
 
     // We did get a total size from the application
-    if ( hasMetaData ( "sourceSize" ) )
+    if ( hasMetaData ( QLatin1String ( "sourceSize" ) ) )
     {
         kDebug ( KIO_MTP ) << "direct put";
 
@@ -546,7 +546,7 @@ void MTPSlave::put ( const KUrl& url, int, JobFlags flags )
         file->parent_id = parent->item_id;
         file->filename = strdup ( url.fileName().toUtf8().data() );
         file->filetype = getFiletype ( url.fileName() );
-        file->filesize = metaData ( "sourceSize" ).toULongLong();
+        file->filesize = metaData ( QLatin1String ( "sourceSize" ) ).toULongLong();
         file->modificationdate = QDateTime::currentDateTime().toTime_t();
         file->storage_id = parent->storage_id;
 
@@ -613,7 +613,7 @@ void MTPSlave::get ( const KUrl& url )
 
     kDebug ( KIO_MTP ) << url.path();
 
-    QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
+    QStringList pathItems = url.path().split ( QLatin1Char ( '/' ), QString::SkipEmptyParts );
 
     // File
     if ( pathItems.size() > 2 )
@@ -652,15 +652,15 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags )
     kDebug ( KIO_MTP ) << src.path() << dest.path();
 
     // mtp:/// to mtp:///
-    if ( src.protocol() == "mtp" && dest.protocol() == "mtp" )
+    if ( src.protocol() == QLatin1String ( "mtp" ) && dest.protocol() == QLatin1String ( "mtp" ) )
     {
         kDebug ( KIO_MTP ) << "Copy on device: Not supported";
         // MTP doesn't support moving files directly on the device, so we have to download and then upload...
 
-        error ( ERR_UNSUPPORTED_ACTION, "Cannot copy/move files on the device itself" );
+        error ( ERR_UNSUPPORTED_ACTION, i18n( "Cannot copy/move files on the device itself" ) );
     }
     // file:/// tp mtp:///
-    if ( src.protocol() == "file" && dest.protocol() == "mtp" )
+    if ( src.protocol() == QLatin1String ( "file" ) && dest.protocol() == QLatin1String ( "mtp" ) )
     {
         int check = checkUrl( dest );
         switch ( check )
@@ -672,7 +672,7 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags )
                 return;
         }
 
-        QStringList destItems = dest.path().split ( '/', QString::SkipEmptyParts );
+        QStringList destItems = dest.path().split ( QLatin1Char ( '/') , QString::SkipEmptyParts );
 
         // Can't copy to root or device, needs storage
         if ( destItems.size() < 2 )
@@ -734,7 +734,7 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags )
         kDebug ( KIO_MTP ) << "Sent file";
     }
     // mtp:/// to file:///
-    if ( src.protocol() == "mtp" && dest.protocol() == "file" )
+    if ( src.protocol() == QLatin1String ( "mtp" ) && dest.protocol() == QLatin1String ( "file" ) )
     {
         int check = checkUrl( src );
         switch ( check )
@@ -756,7 +756,7 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags )
             return;
         }
 
-        QStringList srcItems = src.path().split ( '/', QString::SkipEmptyParts );
+        QStringList srcItems = src.path().split ( QLatin1Char ( '/' ), QString::SkipEmptyParts );
 
         // Can't copy to root or device, needs storage
         if ( srcItems.size() < 2 )
@@ -808,7 +808,7 @@ void MTPSlave::mkdir ( const KUrl& url, int )
 
     kDebug ( KIO_MTP ) << url.path();
 
-    QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
+    QStringList pathItems = url.path().split ( QLatin1Char ( '/' ) , QString::SkipEmptyParts );
 
     if ( pathItems.size() > 2 && !getPath ( url.path() ).first )
     {
@@ -865,7 +865,7 @@ void MTPSlave::del ( const KUrl& url, bool )
 
     kDebug ( KIO_MTP ) << url.path();
 
-    QStringList pathItems = url.path().split ( '/', QString::SkipEmptyParts );
+    QStringList pathItems = url.path().split ( QLatin1Char ( '/' ), QString::SkipEmptyParts );
 
     if ( pathItems.size() < 2 )
     {
@@ -916,7 +916,7 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags flags )
 
     kDebug ( KIO_MTP ) << src.path();
 
-    QStringList srcItems = src.path().split ( '/', QString::SkipEmptyParts );
+    QStringList srcItems = src.path().split ( QLatin1Char ( '/' ), QString::SkipEmptyParts );
     QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath ( src.path() );
 
     if ( pair.first )

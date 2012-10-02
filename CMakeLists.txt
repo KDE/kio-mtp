@@ -8,6 +8,7 @@ find_package(KDE4 REQUIRED)
 find_package(Mtp)
 
 #add_definitions(-DKDE_DEFAULT_DEBUG_AREA=7999)
+add_definitions(-DQT_NO_CAST_FROM_ASCII)
 
 set( kio_mtp_PART_SRCS
      filecache.cpp

@@ -70,7 +70,7 @@ QString convertToPath( const QStringList& pathItems, const int elements )
 
     for ( int i = 0; i < elements && elements <= pathItems.size(); i++ )
     {
-        path.append( "/" );
+        path.append( QLatin1Char ('/') );
         path.append( pathItems.at(i) );
     }
 
@@ -82,95 +82,95 @@ QString getMimetype ( LIBMTP_filetype_t filetype )
     switch ( filetype )
     {
     case LIBMTP_FILETYPE_FOLDER:
-        return QString ( "inode/directory" );
+        return QLatin1String ( "inode/directory" );
 
     case LIBMTP_FILETYPE_WAV:
-        return QString ( "audio/wav" );
+        return QLatin1String ( "audio/wav" );
     case LIBMTP_FILETYPE_MP3:
-        return QString ( "audio/x-mp3" );
+        return QLatin1String ( "audio/x-mp3" );
     case LIBMTP_FILETYPE_WMA:
-        return QString ( "audio/x-ms-wma" );
+        return QLatin1String ( "audio/x-ms-wma" );
     case LIBMTP_FILETYPE_OGG:
-        return QString ( "audio/x-vorbis+ogg" );
+        return QLatin1String ( "audio/x-vorbis+ogg" );
     case LIBMTP_FILETYPE_AUDIBLE:
-        return QString ( "" );
+        return QLatin1String ( "" );
     case LIBMTP_FILETYPE_MP4:
-        return QString ( "audio/mp4" );
+        return QLatin1String ( "audio/mp4" );
     case LIBMTP_FILETYPE_UNDEF_AUDIO:
-        return QString ( "" );
+        return QLatin1String ( "" );
     case LIBMTP_FILETYPE_WMV:
-        return QString ( "video/x-ms-wmv" );
+        return QLatin1String ( "video/x-ms-wmv" );
     case LIBMTP_FILETYPE_AVI:
-        return QString ( "video/x-msvideo" );
+        return QLatin1String ( "video/x-msvideo" );
     case LIBMTP_FILETYPE_MPEG:
-        return QString ( "video/mpeg" );
+        return QLatin1String ( "video/mpeg" );
     case LIBMTP_FILETYPE_ASF:
-        return QString ( "video/x-ms-asf" );
+        return QLatin1String ( "video/x-ms-asf" );
     case LIBMTP_FILETYPE_QT:
-        return QString ( "video/quicktime" );
+        return QLatin1String ( "video/quicktime" );
     case LIBMTP_FILETYPE_UNDEF_VIDEO:
-        return QString ( "" );
+        return QLatin1String ( "" );
     case LIBMTP_FILETYPE_JPEG:
-        return QString ( "image/jpeg" );
+        return QLatin1String ( "image/jpeg" );
     case LIBMTP_FILETYPE_JFIF:
-        return QString ( "" );
+        return QLatin1String ( "" );
     case LIBMTP_FILETYPE_TIFF:
-        return QString ( "image/tiff" );
+        return QLatin1String ( "image/tiff" );
     case LIBMTP_FILETYPE_BMP:
-        return QString ( "image/bmp" );
+        return QLatin1String ( "image/bmp" );
     case LIBMTP_FILETYPE_GIF:
-        return QString ( "image/gif" );
+        return QLatin1String ( "image/gif" );
     case LIBMTP_FILETYPE_PICT:
-        return QString ( "image/x-pict" );
+        return QLatin1String ( "image/x-pict" );
     case LIBMTP_FILETYPE_PNG:
-        return QString ( "image/png" );
+        return QLatin1String ( "image/png" );
     case LIBMTP_FILETYPE_VCALENDAR1:
-        return QString ( "text/x-vcalendar" );
+        return QLatin1String ( "text/x-vcalendar" );
     case LIBMTP_FILETYPE_VCALENDAR2:
-        return QString ( "text/x-vcalendar" );
+        return QLatin1String ( "text/x-vcalendar" );
     case LIBMTP_FILETYPE_VCARD2:
-        return QString ( "text/x-vcard" );
+        return QLatin1String ( "text/x-vcard" );
     case LIBMTP_FILETYPE_VCARD3:
-        return QString ( "text/x-vcard" );
+        return QLatin1String ( "text/x-vcard" );
     case LIBMTP_FILETYPE_WINDOWSIMAGEFORMAT:
-        return QString ( "image/x-wmf" );
+        return QLatin1String ( "image/x-wmf" );
     case LIBMTP_FILETYPE_WINEXEC:
-        return QString ( "application/x-ms-dos-executable" );
+        return QLatin1String ( "application/x-ms-dos-executable" );
     case LIBMTP_FILETYPE_TEXT:
-        return QString ( "text/plain" );
+        return QLatin1String ( "text/plain" );
     case LIBMTP_FILETYPE_HTML:
-        return QString ( "text/html" );
+        return QLatin1String ( "text/html" );
     case LIBMTP_FILETYPE_FIRMWARE:
-        return QString ( "" );
+        return QLatin1String ( "" );
     case LIBMTP_FILETYPE_AAC:
-        return QString ( "audio/aac" );
+        return QLatin1String ( "audio/aac" );
     case LIBMTP_FILETYPE_MEDIACARD:
-        return QString ( "" );
+        return QLatin1String ( "" );
     case LIBMTP_FILETYPE_FLAC:
-        return QString ( "audio/flac" );
+        return QLatin1String ( "audio/flac" );
     case LIBMTP_FILETYPE_MP2:
-        return QString ( "video/mpeg" );
+        return QLatin1String ( "video/mpeg" );
     case LIBMTP_FILETYPE_M4A:
-        return QString ( "audio/mp4" );
+        return QLatin1String ( "audio/mp4" );
     case LIBMTP_FILETYPE_DOC:
-        return QString ( "application/msword" );
+        return QLatin1String ( "application/msword" );
     case LIBMTP_FILETYPE_XML:
-        return QString ( "text/xml" );
+        return QLatin1String ( "text/xml" );
     case LIBMTP_FILETYPE_XLS:
-        return QString ( "application/vnd.ms-excel" );
+        return QLatin1String ( "application/vnd.ms-excel" );
     case LIBMTP_FILETYPE_PPT:
-        return QString ( "application/vnd.ms-powerpoint" );
+        return QLatin1String ( "application/vnd.ms-powerpoint" );
     case LIBMTP_FILETYPE_MHT:
-        return QString ( "" );
+        return QLatin1String ( "" );
     case LIBMTP_FILETYPE_JP2:
-        return QString ( "image/jpeg2000" );
+        return QLatin1String ( "image/jpeg2000" );
     case LIBMTP_FILETYPE_JPX:
-        return QString ( "application/x-jbuilder-project" );
+        return QLatin1String ( "application/x-jbuilder-project" );
     case LIBMTP_FILETYPE_UNKNOWN:
-        return QString ( "" );
+        return QLatin1String ( "" );
 
     default:
-        return "";
+        return QLatin1String ( "" );
     }
 }
 
@@ -178,151 +178,151 @@ LIBMTP_filetype_t getFiletype ( const QString &filename )
 {
     LIBMTP_filetype_t filetype;
 
-    QString ptype = filename.split ( "." ).last();
+    QString ptype = filename.split ( QLatin1Char ( '.' ) ).last();
 
     /* This need to be kept constantly updated as new file types arrive. */
-    if ( ptype == QString ( "wav" ) )
+    if ( ptype == QLatin1String ( "wav" ) )
     {
         filetype = LIBMTP_FILETYPE_WAV;
     }
-    else if ( ptype == QString ( "mp3" ) )
+    else if ( ptype == QLatin1String ( "mp3" ) )
     {
         filetype = LIBMTP_FILETYPE_MP3;
     }
-    else if ( ptype == QString ( "wma" ) )
+    else if ( ptype == QLatin1String ( "wma" ) )
     {
         filetype = LIBMTP_FILETYPE_WMA;
     }
-    else if ( ptype == QString ( "ogg" ) )
+    else if ( ptype == QLatin1String ( "ogg" ) )
     {
         filetype = LIBMTP_FILETYPE_OGG;
     }
-    else if ( ptype == QString ( "mp4" ) )
+    else if ( ptype == QLatin1String ( "mp4" ) )
     {
         filetype = LIBMTP_FILETYPE_MP4;
     }
-    else if ( ptype == QString ( "wmv" ) )
+    else if ( ptype == QLatin1String ( "wmv" ) )
     {
         filetype = LIBMTP_FILETYPE_WMV;
     }
-    else if ( ptype == QString ( "avi" ) )
+    else if ( ptype == QLatin1String ( "avi" ) )
     {
         filetype = LIBMTP_FILETYPE_AVI;
     }
-    else if ( ptype == QString ( "mpeg" ) ||
-              ptype == QString ( "mpg" ) )
+    else if ( ptype == QLatin1String ( "mpeg" ) ||
+              ptype == QLatin1String ( "mpg" ) )
     {
         filetype = LIBMTP_FILETYPE_MPEG;
     }
-    else if ( ptype == QString ( "asf" ) )
+    else if ( ptype == QLatin1String ( "asf" ) )
     {
         filetype = LIBMTP_FILETYPE_ASF;
     }
-    else if ( ptype == QString ( "qt" ) ||
-              ptype == QString ( "mov" ) )
+    else if ( ptype == QLatin1String ( "qt" ) ||
+              ptype == QLatin1String ( "mov" ) )
     {
         filetype = LIBMTP_FILETYPE_QT;
     }
-    else if ( ptype == QString ( "wma" ) )
+    else if ( ptype == QLatin1String ( "wma" ) )
     {
         filetype = LIBMTP_FILETYPE_WMA;
     }
-    else if ( ptype == QString ( "jpg" ) ||
-              ptype == QString ( "jpeg" ) )
+    else if ( ptype == QLatin1String ( "jpg" ) ||
+              ptype == QLatin1String ( "jpeg" ) )
     {
         filetype = LIBMTP_FILETYPE_JPEG;
     }
-    else if ( ptype == QString ( "jfif" ) )
+    else if ( ptype == QLatin1String ( "jfif" ) )
     {
         filetype = LIBMTP_FILETYPE_JFIF;
     }
-    else if ( ptype == QString ( "tif" ) ||
-              ptype == QString ( "tiff" ) )
+    else if ( ptype == QLatin1String ( "tif" ) ||
+              ptype == QLatin1String ( "tiff" ) )
     {
         filetype = LIBMTP_FILETYPE_TIFF;
     }
-    else if ( ptype == QString ( "bmp" ) )
+    else if ( ptype == QLatin1String ( "bmp" ) )
     {
         filetype = LIBMTP_FILETYPE_BMP;
     }
-    else if ( ptype == QString ( "gif" ) )
+    else if ( ptype == QLatin1String ( "gif" ) )
     {
         filetype = LIBMTP_FILETYPE_GIF;
     }
-    else if ( ptype == QString ( "pic" ) ||
-              ptype == QString ( "pict" ) )
+    else if ( ptype == QLatin1String ( "pic" ) ||
+              ptype == QLatin1String ( "pict" ) )
     {
         filetype = LIBMTP_FILETYPE_PICT;
     }
-    else if ( ptype == QString ( "png" ) )
+    else if ( ptype == QLatin1String ( "png" ) )
     {
         filetype = LIBMTP_FILETYPE_PNG;
     }
-    else if ( ptype == QString ( "wmf" ) )
+    else if ( ptype == QLatin1String ( "wmf" ) )
     {
         filetype = LIBMTP_FILETYPE_WINDOWSIMAGEFORMAT;
     }
-    else if ( ptype == QString ( "ics" ) )
+    else if ( ptype == QLatin1String ( "ics" ) )
     {
         filetype = LIBMTP_FILETYPE_VCALENDAR2;
     }
-    else if ( ptype == QString ( "exe" ) ||
-              ptype == QString ( "com" ) ||
-              ptype == QString ( "bat" ) ||
-              ptype == QString ( "dll" ) ||
-              ptype == QString ( "sys" ) )
+    else if ( ptype == QLatin1String ( "exe" ) ||
+              ptype == QLatin1String ( "com" ) ||
+              ptype == QLatin1String ( "bat" ) ||
+              ptype == QLatin1String ( "dll" ) ||
+              ptype == QLatin1String ( "sys" ) )
     {
         filetype = LIBMTP_FILETYPE_WINEXEC;
     }
-    else if ( ptype == QString ( "aac" ) )
+    else if ( ptype == QLatin1String ( "aac" ) )
     {
         filetype = LIBMTP_FILETYPE_AAC;
     }
-    else if ( ptype == QString ( "mp2" ) )
+    else if ( ptype == QLatin1String ( "mp2" ) )
     {
         filetype = LIBMTP_FILETYPE_MP2;
     }
-    else if ( ptype == QString ( "flac" ) )
+    else if ( ptype == QLatin1String ( "flac" ) )
     {
         filetype = LIBMTP_FILETYPE_FLAC;
     }
-    else if ( ptype == QString ( "m4a" ) )
+    else if ( ptype == QLatin1String ( "m4a" ) )
     {
         filetype = LIBMTP_FILETYPE_M4A;
     }
-    else if ( ptype == QString ( "doc" ) )
+    else if ( ptype == QLatin1String ( "doc" ) )
     {
         filetype = LIBMTP_FILETYPE_DOC;
     }
-    else if ( ptype == QString ( "xml" ) )
+    else if ( ptype == QLatin1String ( "xml" ) )
     {
         filetype = LIBMTP_FILETYPE_XML;
     }
-    else if ( ptype == QString ( "xls" ) )
+    else if ( ptype == QLatin1String ( "xls" ) )
     {
         filetype = LIBMTP_FILETYPE_XLS;
     }
-    else if ( ptype == QString ( "ppt" ) )
+    else if ( ptype == QLatin1String ( "ppt" ) )
     {
         filetype = LIBMTP_FILETYPE_PPT;
     }
-    else if ( ptype == QString ( "mht" ) )
+    else if ( ptype == QLatin1String ( "mht" ) )
     {
         filetype = LIBMTP_FILETYPE_MHT;
     }
-    else if ( ptype == QString ( "jp2" ) )
+    else if ( ptype == QLatin1String ( "jp2" ) )
     {
         filetype = LIBMTP_FILETYPE_JP2;
     }
-    else if ( ptype == QString ( "jpx" ) )
+    else if ( ptype == QLatin1String ( "jpx" ) )
     {
         filetype = LIBMTP_FILETYPE_JPX;
     }
-    else if ( ptype == QString ( "bin" ) )
+    else if ( ptype == QLatin1String ( "bin" ) )
     {
         filetype = LIBMTP_FILETYPE_FIRMWARE;
     }
-    else if ( ptype == QString ( "vcf" ) )
+    else if ( ptype == QLatin1String ( "vcf" ) )
     {
         filetype = LIBMTP_FILETYPE_VCARD3;
     }
@@ -444,10 +444,10 @@ void getEntry ( UDSEntry &entry, LIBMTP_mtpdevice_t* device )
         deviceName = QString::fromUtf8 ( charName );
 
     entry.insert ( UDSEntry::UDS_NAME, deviceName );
-    entry.insert ( UDSEntry::UDS_ICON_NAME, QString ( "multimedia-player" ) );
+    entry.insert ( UDSEntry::UDS_ICON_NAME, QLatin1String ( "multimedia-player" ) );
     entry.insert ( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
     entry.insert ( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
-    entry.insert ( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+    entry.insert ( UDSEntry::UDS_MIME_TYPE, QLatin1String ( "inode/directory" ) );
 }
 
 void getEntry ( UDSEntry &entry, const LIBMTP_devicestorage_t* storage )
@@ -462,10 +462,10 @@ void getEntry ( UDSEntry &entry, const LIBMTP_devicestorage_t* storage )
         storageName = QString::fromUtf8 ( charIdentifier );
 
     entry.insert ( UDSEntry::UDS_NAME, storageName );
-    entry.insert ( UDSEntry::UDS_ICON_NAME, QString ( "drive-removable-media" ) );
+    entry.insert ( UDSEntry::UDS_ICON_NAME, QLatin1String ( "drive-removable-media" ) );
     entry.insert ( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
     entry.insert ( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
-    entry.insert ( UDSEntry::UDS_MIME_TYPE, "inode/directory" );
+    entry.insert ( UDSEntry::UDS_MIME_TYPE, QLatin1String ( "inode/directory" ) );
 }
 
 void getEntry ( UDSEntry &entry, const LIBMTP_file_t* file )
