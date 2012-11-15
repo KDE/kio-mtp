@@ -41,7 +41,8 @@ int dataProgress ( uint64_t const sent, uint64_t const, void const *const priv )
  */
 uint16_t dataPut ( void*, void *priv, uint32_t sendlen, unsigned char *data, uint32_t *putlen )
 {
-    //     kDebug(KIO_MTP) << "transferring" << sendlen << "bytes to data()";
+    kDebug(KIO_MTP) << "transferring" << sendlen << "bytes to data()";
+
     ( ( MTPSlave* ) priv )->data ( QByteArray ( ( char* ) data, ( int ) sendlen ) );
     *putlen = sendlen;
 
@@ -53,11 +54,15 @@ uint16_t dataPut ( void*, void *priv, uint32_t sendlen, unsigned char *data, uin
  */
 uint16_t dataGet ( void*, void *priv, uint32_t, UNUSED unsigned char *data, uint32_t *gotlen )
 {
-    //     kDebug(KIO_MTP) << "transferring" << sendlen << "bytes to data()";
     ( ( MTPSlave* ) priv )->dataReq();
 
     QByteArray buffer;
     *gotlen = ( ( MTPSlave* ) priv )->readData ( buffer );
+
+    kDebug(KIO_MTP) << "transferring" << *gotlen << "bytes to data()";
+
+//     data = ( unsigned char* ) malloc( buffer.size() );
+//     memcpy( data, buffer.data(), buffer.size() );
 
     data = ( unsigned char* ) buffer.data();
 
@@ -475,12 +480,14 @@ void getEntry ( UDSEntry &entry, const LIBMTP_file_t* file )
     {
         entry.insert ( UDSEntry::UDS_FILE_TYPE, S_IFDIR );
         entry.insert ( UDSEntry::UDS_ACCESS, S_IRWXU | S_IRWXG | S_IRWXO );
+        entry.insert ( UDSEntry::UDS_MIME_TYPE, QLatin1String ( "inode/directory" ) );
     }
     else
     {
         entry.insert ( UDSEntry::UDS_FILE_TYPE, S_IFREG );
         entry.insert ( UDSEntry::UDS_ACCESS, S_IRUSR | S_IRGRP | S_IROTH | S_IXUSR | S_IXGRP | S_IXOTH );
         entry.insert ( UDSEntry::UDS_SIZE, file->filesize );
+        entry.insert ( UDSEntry::UDS_MIME_TYPE, getMimetype( file->filetype ) );
     }
     entry.insert ( UDSEntry::UDS_INODE, file->item_id );
     entry.insert ( UDSEntry::UDS_ACCESS_TIME, file->modificationdate );

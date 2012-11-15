@@ -105,6 +105,8 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
         {
             ret.first = device;
             ret.second = device;
+
+            kDebug(KIO_MTP) << "returning LIBMTP_mtpdevice_t";
         }
 
         if ( pathItems.size() > 2 )
@@ -121,6 +123,8 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
                     kDebug ( KIO_MTP ) << "Found file in cache";
                     ret.first = file;
                     ret.second = device;
+
+                    kDebug(KIO_MTP) << "returning LIBMTP_file_t";
 
                     return ret;
                 }
@@ -148,6 +152,8 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
                         ret.first = file;
                         ret.second = device;
 
+                        kDebug(KIO_MTP) << "returning LIBMTP_file_t";
+
                         fileCache->addPath( path, file->item_id );
                     }
 
@@ -160,14 +166,14 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
 
         if ( pathItems.size() > 1 && storages.contains ( pathItems.at ( 1 ) ) )
         {
-            kDebug(KIO_MTP) << "storages!!!!!!!!!!!!!!!!!!!";
-
             LIBMTP_devicestorage_t *storage = storages.value ( pathItems.at ( 1 ) );
 
             if ( pathItems.size() == 2 )
             {
                 ret.first = storage;
                 ret.second = device;
+
+                kDebug(KIO_MTP) << "returning LIBMTP_devicestorage_t";
 
                 return ret;
             }
@@ -187,6 +193,9 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
                 }
                 else
                 {
+
+                    kDebug(KIO_MTP) << "returning LIBMTP_file_t";
+
                     return ret;
                 }
                 currentLevel++;
@@ -700,23 +709,38 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags )
         }
 
         LIBMTP_mtpdevice_t *device = pair.second;
-        LIBMTP_file_t *parent = ( LIBMTP_file_t* ) pair.first;
 
-        if ( parent->filetype != LIBMTP_FILETYPE_FOLDER )
+        uint32_t parent_id = 0xFFFFFFFF, storage_id = 0;
+
+        if ( destItems.size() == 2 )
         {
-            error ( ERR_IS_FILE, dest.directory() );
-            return;
+            LIBMTP_devicestorage_t *storage = ( LIBMTP_devicestorage_t*) pair.first;
+
+            storage_id = storage->id;
+        }
+        else
+        {
+            LIBMTP_file_t *parent = ( LIBMTP_file_t* ) pair.first;
+
+            storage_id = parent->storage_id;
+            parent_id = parent->item_id;
+
+            if ( parent->filetype != LIBMTP_FILETYPE_FOLDER )
+            {
+                error ( ERR_IS_FILE, dest.directory() );
+                return;
+            }
         }
 
         QFileInfo source ( src.path() );
 
         LIBMTP_file_t *file = LIBMTP_new_file_t();
-        file->parent_id = parent->item_id;
+        file->parent_id = parent_id;
         file->filename = strdup ( dest.fileName().toUtf8().data() );
         file->filetype = getFiletype ( dest.fileName() );
         file->filesize = source.size();
         file->modificationdate = source.lastModified().toTime_t();
-        file->storage_id = parent->storage_id;
+        file->storage_id = storage_id;
 
         kDebug ( KIO_MTP ) << "Sending file" << file->filename << "with size" << file->filesize;
 
