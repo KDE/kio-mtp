@@ -2,9 +2,15 @@
 Icon=multimedia-player
 Name=MTP Devices
 Name[cs]=Zařízení MTP
+Name[de]=MTP-Geräte
+Name[el]=Συσκευές MTP
+Name[et]=MTP seadmed
+Name[hu]=MTP eszközök
+Name[it]=Dispositivi MTP
 Name[nl]=MTP-apparaten
 Name[pt]=Dispositivos MTP
 Name[pt_BR]=Dispositivos MTP
+Name[sk]=Zariadenia MTP
 Name[sv]=MTP-enheter
 Name[uk]=Пристрої MTP
 Name[x-test]=xxMTP Devicesxx

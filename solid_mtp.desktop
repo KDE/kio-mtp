@@ -8,9 +8,15 @@ Exec=kioclient exec mtp:udi=%i/
 Icon=system-file-manager
 Name=Open with File Manager
 Name[cs]=Otevřít ve správci souborů
+Name[de]=Mit Dateiverwaltung öffnen
+Name[el]=Άνοιγμα με τον διαχειριστή αρχείων
+Name[et]=Avamine failihalduriga
+Name[hu]=Megnyitás a fájlkezelővel
+Name[it]=Apri con gestore file
 Name[nl]=Met bestandsbeheerder openen
 Name[pt]=Abrir com o Gestor de Ficheiros
 Name[pt_BR]=Abrir com o gerenciador de arquivos
+Name[sk]=Otvoriť v správcovi súborov
 Name[sv]=Öppna med filhanterare
 Name[uk]=Відкрити у програмі для керування файлами
 Name[x-test]=xxOpen with File Managerxx
