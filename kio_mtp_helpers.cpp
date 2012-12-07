@@ -398,14 +398,14 @@ QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages ( LIBMTP_mtpdevice_t *&
     {
         for ( LIBMTP_devicestorage_t* storage = device->storage; storage != NULL; storage = storage->next )
         {
-            char *storageIdentifier = storage->VolumeIdentifier;
+//             char *storageIdentifier = storage->VolumeIdentifier;
             char *storageDescription = storage->StorageDescription;
 
             QString storagename;
-            if ( !storageIdentifier )
+//             if ( !storageIdentifier )
                 storagename = QString::fromUtf8 ( storageDescription );
-            else
-                storagename = QString::fromUtf8 ( storageIdentifier );
+//             else
+//                 storagename = QString::fromUtf8 ( storageIdentifier );
 
             kDebug(KIO_MTP) << "found storage" << storagename;
 
@@ -457,14 +457,14 @@ void getEntry ( UDSEntry &entry, LIBMTP_mtpdevice_t* device )
 
 void getEntry ( UDSEntry &entry, const LIBMTP_devicestorage_t* storage )
 {
-    char *charIdentifier = storage->VolumeIdentifier;
+//     char *charIdentifier = storage->VolumeIdentifier;
     char *charDescription = storage->StorageDescription;
 
     QString storageName;
-    if ( !charIdentifier )
+//     if ( !charIdentifier )
         storageName = QString::fromUtf8 ( charDescription );
-    else
-        storageName = QString::fromUtf8 ( charIdentifier );
+//     else
+//         storageName = QString::fromUtf8 ( charIdentifier );
 
     entry.insert ( UDSEntry::UDS_NAME, storageName );
     entry.insert ( UDSEntry::UDS_ICON_NAME, QLatin1String ( "drive-removable-media" ) );
