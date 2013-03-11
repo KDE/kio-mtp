@@ -1,6 +1,6 @@
 /*
  *  Helper implementations for KIO-MTP
- *  Copyright (C) 2012  Philipp Schmidt <philschmidt@gmx.net>
+ *  Copyright (C) 2013  Philipp Schmidt <philschmidt@gmx.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,16 +17,7 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "kio_mtp.h"
-
-#include <libmtp.h>
-
-
-#ifdef __GNUC__
-#define UNUSED __attribute__ ((unused))
-#else
-#define UNUSED
-#endif
+#include "kio_mtp_helpers.h"
 
 
 int dataProgress ( uint64_t const sent, uint64_t const, void const *const priv )
@@ -340,99 +331,50 @@ LIBMTP_filetype_t getFiletype ( const QString &filename )
     return filetype;
 }
 
-QMap<QString, LIBMTP_raw_device_t*> getRawDevices()
-{
-    kDebug ( KIO_MTP ) << "getRawDevices()";
-
-    LIBMTP_raw_device_t *rawdevices;
-    int numrawdevices;
-    LIBMTP_error_number_t err;
-
-    QMap<QString, LIBMTP_raw_device_t*> devices;
-
-    err = LIBMTP_Detect_Raw_Devices ( &rawdevices, &numrawdevices );
-    switch ( err )
-    {
-    case LIBMTP_ERROR_CONNECTING:
-        //             WARNING("There has been an error connecting to the devices");
-        break;
-    case LIBMTP_ERROR_MEMORY_ALLOCATION:
-        //             WARNING("Encountered a Memory Allocation Error");
-        break;
-    case LIBMTP_ERROR_NONE:
-    {
-        for ( int i = 0; i < numrawdevices; i++ )
-        {
-            LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached ( &rawdevices[i] );
-
-            char *deviceName = LIBMTP_Get_Friendlyname ( device );
-            char *deviceModel = LIBMTP_Get_Modelname ( device );
-
-            // prefer friendly devicename over model
-            QString name;
-            if ( !deviceName )
-                name = QString::fromUtf8 ( deviceModel );
-            else
-                name = QString::fromUtf8 ( deviceName );
-
-            devices.insert ( name, &rawdevices[i] );
-
-            LIBMTP_Release_Device ( device );
-        }
-    }
-    break;
-    case LIBMTP_ERROR_GENERAL:
-    default:
-        //             WARNING("Unknown connection error");
-        break;
-    }
-    return devices;
-}
-
 QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages ( LIBMTP_mtpdevice_t *&device )
 {
     kDebug ( KIO_MTP ) << "[ENTER]" << ( device == 0 );
-
+    
     QMap<QString, LIBMTP_devicestorage_t*> storages;
     if ( device )
     {
         for ( LIBMTP_devicestorage_t* storage = device->storage; storage != NULL; storage = storage->next )
         {
-//             char *storageIdentifier = storage->VolumeIdentifier;
+            //             char *storageIdentifier = storage->VolumeIdentifier;
             char *storageDescription = storage->StorageDescription;
-
+            
             QString storagename;
-//             if ( !storageIdentifier )
-                storagename = QString::fromUtf8 ( storageDescription );
-//             else
-//                 storagename = QString::fromUtf8 ( storageIdentifier );
-
+            //             if ( !storageIdentifier )
+            storagename = QString::fromUtf8 ( storageDescription );
+            //             else
+            //                 storagename = QString::fromUtf8 ( storageIdentifier );
+            
             kDebug(KIO_MTP) << "found storage" << storagename;
-
+            
             storages.insert ( storagename, storage );
         }
     }
-
+    
     kDebug ( KIO_MTP ) << "[EXIT]" << storages.size();
-
+    
     return storages;
 }
 
-QMap<QString, LIBMTP_file_t*> getFiles ( LIBMTP_mtpdevice_t *&device, uint32_t storage_id, uint32_t parent_id = 0xFFFFFFFF )
+QMap<QString, LIBMTP_file_t*> getFiles ( LIBMTP_mtpdevice_t *&device, uint32_t storage_id, uint32_t parent_id )
 {
     kDebug ( KIO_MTP ) << "getFiles() for parent" << parent_id;
-
+    
     QMap<QString, LIBMTP_file_t*> fileMap;
-
+    
     LIBMTP_file_t *files = LIBMTP_Get_Files_And_Folders ( device, storage_id, parent_id ), *file;
     for ( file = files; file != NULL; file = file->next )
     {
         fileMap.insert ( QString::fromUtf8 ( file->filename ), file );
-//         kDebug(KIO_MTP) << "found file" << file->filename;
+        //         kDebug(KIO_MTP) << "found file" << file->filename;
     }
-
+    
     kDebug ( KIO_MTP ) << "[EXIT]";
-
+    
     return fileMap;
 }
 

@@ -18,6 +18,7 @@
  */
 
 #include "kio_mtp.h"
+#include "kio_mtp_helpers.h"
 
 #include <KComponentData>
 #include <KTemporaryFile>
@@ -28,11 +29,11 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <utime.h>
 
 #include <solid/device.h>
 #include <solid/genericinterface.h>
 
-#include "kio_mtp_helpers.cpp"
 
 //////////////////////////////////////////////////////////////////////////////
 ///////////////////////////// Slave Implementation ///////////////////////////
@@ -54,7 +55,9 @@ int KDE_EXPORT kdemain ( int argc, char **argv )
     }
 
     MTPSlave slave ( argv[2], argv[3] );
+    
     slave.dispatchLoop();
+    
     return 0;
 }
 
@@ -63,20 +66,20 @@ MTPSlave::MTPSlave ( const QByteArray& pool, const QByteArray& app )
 {
     LIBMTP_Init();
 
-    fileCache = new FileCache ( this );
-    fileCache->start();
-
     kDebug ( KIO_MTP ) << "Slave started";
+    
+    deviceCache = new DeviceCache( 60000 );
+    fileCache = new FileCache ( this );
+    
+    kDebug ( KIO_MTP ) << "Caches created";
 }
 
 MTPSlave::~MTPSlave()
 {
-    fileCache->exit();
 }
 
 /**
  * @brief Get's the correct object from the device.
- * !Important! Release Device after using the returned object
  * @param pathItems A QStringList containing the items of the filepath
  * @return QPair with the object and its device. pair.fist is a nullpointer if the object doesn't exist or for root or, depending on the pathItems size device (1), storage (2) or file (>=3)
  */
@@ -94,11 +97,9 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
         return ret;
     }
 
-    QMap<QString, LIBMTP_raw_device_t*> devices = getRawDevices();
-
-    if ( devices.contains ( pathItems.at ( 0 ) ) )
+    if ( deviceCache->contains( pathItems.at ( 0 ) ) )
     {
-        LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached ( devices.value ( pathItems.at ( 0 ) ) );
+        LIBMTP_mtpdevice_t *device = deviceCache->get ( pathItems.at ( 0 ) )->getDevice();
 
         // return specific device
         if ( pathItems.size() == 1 )
@@ -135,16 +136,23 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
                 QString parentPath = convertToPath ( pathItems, pathItems.size() - 1 );
                 uint32_t c_parentID = fileCache->queryPath ( parentPath );
 
-                kDebug() << "Match for parent found in cache, checking device";
+                kDebug() << "Match for parent found in cache, checking device. Parent id = " << c_parentID;
 
                 LIBMTP_file_t* parent = LIBMTP_Get_Filemetadata ( device, c_parentID );
                 if ( parent )
                 {
                     kDebug ( KIO_MTP ) << "Found parent in cache";
-                    fileCache->addPath( parentPath, c_parentID );
+//                     fileCache->addPath( parentPath, c_parentID );
 
                     QMap<QString, LIBMTP_file_t*> files = getFiles ( device, parent->storage_id, c_parentID );
-
+                    
+                    for ( QMap<QString, LIBMTP_file_t*>::iterator it = files.begin(); it != files.end(); it++ )
+                    {
+                        QString filePath = parentPath;
+                        filePath.append( QString::fromUtf8("/") ).append( it.key() );
+                        fileCache->addPath( filePath, it.value()->item_id );
+                    }
+                    
                     if ( files.contains ( pathItems.last() ) )
                     {
                         LIBMTP_file_t* file = files.value( pathItems.last() );
@@ -221,38 +229,18 @@ int MTPSlave::checkUrl ( const KUrl& url, bool redirect )
 
         kDebug ( KIO_MTP ) << "udi = " << udi;
 
-        Solid::Device device ( udi );
-        if ( !device.isValid() )
+        if ( deviceCache->contains( udi, true ) )
+        {
+            KUrl newUrl;
+            newUrl.setProtocol ( QLatin1String ( "mtp" ) );
+            newUrl.setPath ( QLatin1Char ( '/' ) + deviceCache->get( udi, true )->getName() );
+            redirection ( newUrl );
+            
+            return 1;
+        }
+        else
         {
             return 2;
-        }
-        Solid::GenericInterface *iface = device.as<Solid::GenericInterface>();
-        QMap<QString, QVariant> properties = iface->allProperties();
-
-        int busnum = properties.value ( QLatin1String ( "BUSNUM" ) ).toInt();
-        int devnum = properties.value ( QLatin1String ( "DEVNUM" ) ).toInt();
-
-        kDebug ( KIO_MTP ) << "UDI reports BUS/DEV:" << busnum << "/" << devnum;
-
-        QMap<QString, LIBMTP_raw_device_t*> devices = getRawDevices();
-
-        foreach ( const QString &deviceName, devices.keys() )
-        {
-            LIBMTP_raw_device_t* rawDevice = devices.value ( deviceName );
-            int currentBusNum = rawDevice->bus_location;
-            int currentDevNum = rawDevice->devnum;
-
-            kDebug ( KIO_MTP ) << "LIBMTP has BUS/DEV:"<< currentBusNum << "/" << currentDevNum;
-
-            if ( currentBusNum == busnum && currentDevNum == devnum )
-            {
-                KUrl newUrl;
-                newUrl.setProtocol ( QLatin1String ( "mtp" ) );
-                newUrl.setPath ( QLatin1Char ( '/' ) + deviceName );
-                redirection ( newUrl );
-
-                return 1;
-            }
         }
     }
     else if ( url.path().startsWith(QLatin1Char ( '/' ) ) )
@@ -286,21 +274,17 @@ void MTPSlave::listDir ( const KUrl& url )
 
     UDSEntry entry;
 
-    QMap<QString, LIBMTP_raw_device_t*> devices = getRawDevices();
-
     // list devices
     if ( pathItems.size() == 0 )
     {
         kDebug ( KIO_MTP ) << "Root directory, listing devices";
-        totalSize ( devices.size() );
+        totalSize ( deviceCache->size() );
 
-        foreach ( const QString &deviceName, devices.keys() )
+        foreach ( CachedDevice* cachedDevice, deviceCache->getAll().values() )
         {
-            LIBMTP_mtpdevice_t *device = LIBMTP_Open_Raw_Device_Uncached ( devices.value ( deviceName ) );
+            LIBMTP_mtpdevice_t *device = cachedDevice->getDevice();
 
             getEntry ( entry, device );
-
-            LIBMTP_Release_Device ( device );
 
             listEntry ( entry, false );
             entry.clear();
@@ -312,11 +296,11 @@ void MTPSlave::listDir ( const KUrl& url )
         finished();
     }
     // traverse into device
-    else if ( devices.contains ( pathItems.at ( 0 ) ) )
+    else if ( deviceCache->contains ( pathItems.at ( 0 ) ) )
     {
         QPair<void*, LIBMTP_mtpdevice_t*> pair = getPath ( url.path() );
         UDSEntry entry;
-
+        
         if ( pair.first )
         {
             LIBMTP_mtpdevice_t *device = pair.second;
@@ -325,7 +309,7 @@ void MTPSlave::listDir ( const KUrl& url )
             if ( pathItems.size() == 1 )
             {
                 QMap<QString, LIBMTP_devicestorage_t*> storages = getDevicestorages ( device );
-
+                
                 kDebug ( KIO_MTP ) << "Listing storages for device " << pathItems.at ( 0 );
                 totalSize ( storages.size() );
 
@@ -340,6 +324,7 @@ void MTPSlave::listDir ( const KUrl& url )
                     }
 
                     listEntry ( entry, true );
+                    finished();
                     kDebug ( KIO_MTP ) << "[SUCCESS] :: Storages";
                 }
                 else
@@ -351,45 +336,42 @@ void MTPSlave::listDir ( const KUrl& url )
             else
             {
                 QMap<QString, LIBMTP_file_t*> files;
-
+                
                 if ( pathItems.size() == 2 )
                 {
                     kDebug(KIO_MTP) << "Getting storage root listing";
-
+                    
                     LIBMTP_devicestorage_t *storage = (LIBMTP_devicestorage_t*)pair.first;
-
+                    
                     kDebug(KIO_MTP) << "We have a storage:" << (storage == NULL);
-
+                    
                     files = getFiles( device, storage->id );
                 }
                 else
                 {
                     LIBMTP_file_t *parent = (LIBMTP_file_t*)pair.first;
-
+                    
                     files = getFiles( device, parent->storage_id, parent->item_id );
                 }
-
+                
                 for ( QMap<QString, LIBMTP_file_t*>::iterator it = files.begin(); it != files.end(); it++ )
                 {
                     LIBMTP_file_t *file = it.value();
-
+                    
                     QString filePath = url.path( KUrl::AddTrailingSlash ).append( it.key() );
                     fileCache->addPath( filePath, file->item_id );
-
+                    
                     getEntry ( entry, file );
-
+                    
                     listEntry ( entry, false );
                     entry.clear();
                 }
-
+                
                 listEntry ( entry, true );
-
+                finished();
+                
                 kDebug ( KIO_MTP ) << "[SUCCESS] Files";
             }
-
-            LIBMTP_Release_Device ( pair.second );
-
-            finished();
         }
         else
         {
@@ -454,8 +436,6 @@ void MTPSlave::stat ( const KUrl& url )
         {
             getEntry ( entry, ( LIBMTP_file_t* ) pair.first );
         }
-
-        LIBMTP_Release_Device ( pair.second );
     }
     statEntry ( entry );
     finished();
@@ -649,8 +629,6 @@ void MTPSlave::get ( const KUrl& url )
         }
         else
             error ( ERR_DOES_NOT_EXIST, url.path() );
-
-        LIBMTP_Release_Device ( pair.second );
     }
     else
         error ( ERR_UNSUPPORTED_ACTION, url.path() );
@@ -811,6 +789,14 @@ void MTPSlave::copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags )
             LIBMTP_Clear_Errorstack ( device );
             return;
         }
+        
+        struct utimbuf *times = (utimbuf*) malloc( sizeof( utimbuf ) );
+        times->actime = QDateTime::currentDateTime().toTime_t();
+        times->modtime = source->modificationdate;
+        
+        int result = utime( dest.path().toUtf8().data(), times  );
+        
+        free( times );
 
         kDebug ( KIO_MTP ) << "Sent file";
 
@@ -856,13 +842,15 @@ void MTPSlave::mkdir ( const KUrl& url, int )
                 int ret = LIBMTP_Create_Folder ( device, dirName, file->item_id, file->storage_id );
                 if ( ret != 0 )
                 {
+                    fileCache->addPath( url.path(), ret );
                     finished();
                     return;
                 }
-                fileCache->addPath( url.path(), ret );
-
-                LIBMTP_Dump_Errorstack ( device );
-                LIBMTP_Clear_Errorstack ( device );
+                else
+                {
+                    LIBMTP_Dump_Errorstack ( device );
+                    LIBMTP_Clear_Errorstack ( device );
+                }
             }
         }
     }
@@ -904,7 +892,6 @@ void MTPSlave::del ( const KUrl& url, bool )
     int ret = LIBMTP_Delete_Object ( pair.second, file->item_id );
 
     LIBMTP_destroy_file_t ( file );
-    LIBMTP_Release_Device ( pair.second );
 
     if ( ret != 0 )
     {
@@ -988,7 +975,6 @@ void MTPSlave::rename ( const KUrl& src, const KUrl& dest, JobFlags flags )
             }
 
             LIBMTP_destroy_file_t ( source );
-            LIBMTP_Release_Device ( pair.second );
         }
 
         finished();

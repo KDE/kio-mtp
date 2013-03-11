@@ -1,5 +1,5 @@
 /*
-    <one line to give the program's name and a brief idea of what it does.>
+    Cache for recent files accessed.
     Copyright (C) 2012  Philipp Schmidt <philschmidt@gmx.net>
 
     This program is free software; you can redistribute it and/or modify
@@ -28,12 +28,11 @@
 #include <QDateTime>
 #include <QHash>
 #include <QPair>
-#include <QThread>
 
 /**
  * @class FileCache Implements a time based cache for file ids, mapping their path to their ID. Does _not_ store the device they are on.
  */
-class FileCache : public QThread
+class FileCache : public QObject
 {
     Q_OBJECT
 

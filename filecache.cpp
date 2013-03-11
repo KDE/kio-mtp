@@ -1,5 +1,5 @@
 /*
-    <one line to give the program's name and a brief idea of what it does.>
+    Cache for recent files accessed.
     Copyright (C) 2012  Philipp Schmidt <philschmidt@gmx.net>
 
     This program is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 
 #include <QTimer>
 
-FileCache::FileCache ( QObject* parent ) : QThread ( parent )
+FileCache::FileCache ( QObject* parent ) : QObject ( parent )
 {
     connect ( this, SIGNAL ( s_insertItem ( QString,QPair<QDateTime,uint32_t> ) ),
               this, SLOT ( insertItem ( QString,QPair<QDateTime,uint32_t> ) ) );
@@ -46,9 +46,9 @@ uint32_t FileCache::queryPath ( const QString& path, int timeToLive )
         {
             kDebug(KIO_MTP) << "Found item with ttl:" << item.first << "- now:" << dateTime;
 
-            dateTime = dateTime.addSecs ( timeToLive );
-
-            item.first = qMax<QDateTime> ( item.first, dateTime );
+            item.first = dateTime.addSecs ( timeToLive );
+            
+            kDebug(KIO_MTP) << "Reset item ttl:" << item.first;
 
             emit ( s_insertItem ( path, item ) );
 
@@ -56,7 +56,7 @@ uint32_t FileCache::queryPath ( const QString& path, int timeToLive )
         }
         else
         {
-            kDebug(KIO_MTP) << "Item too old, removed";
+            kDebug(KIO_MTP) << "Item too old (" << item.first << "), removed. Current Time: " << dateTime;
 
             cache.remove( path );
             return 0;
@@ -69,6 +69,8 @@ uint32_t FileCache::queryPath ( const QString& path, int timeToLive )
 void FileCache::insertItem ( const QString& path, QPair< QDateTime, uint32_t > item )
 {
     cache.insert ( path, item );
+    
+    kDebug(KIO_MTP) << "Added " << path << " with ID " << item.second;
 }
 
 void FileCache::removeItem ( const QString& path )

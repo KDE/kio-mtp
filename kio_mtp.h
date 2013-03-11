@@ -32,9 +32,11 @@
 #include <errno.h>
 #include <time.h>
 
-#include <QtCore/QCache>
 #include <libmtp.h>
+
+// #include <QtCore/QCache>
 #include "filecache.h"
+#include "devicecache.h"
 
 #define MAX_XFER_BUF_SIZE           16348
 #define KIO_MTP                     7000
@@ -56,7 +58,12 @@ private:
      */
     int checkUrl( const KUrl& url, bool redirect = true );
     FileCache *fileCache;
+    DeviceCache *deviceCache;
     QPair<void*, LIBMTP_mtpdevice_t*> getPath( const QString& path );
+    
+// private slots:
+//     
+//     void test();
 
 public:
     /*

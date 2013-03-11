@@ -28,7 +28,7 @@ Usage
 -----
 
 To list all currently connected devices, just type
-mtp:/ in the addressbar of your preferred filebrowser.
+mtp:/ in the addressbar of your preferred KDE filebrowser.
 
 Using the scheme mtp:udi=<udi> you can access the
 device using their unique device identifier as provided
@@ -38,8 +38,14 @@ A Device Notificator Desktop-File is also provided that
 enables you to access the device directly from there.
 
 
+Bugs
+----
+
+Please report all bugs to the KDE Bugzilla at http://bugs.kde.org
+using the product "kio" with the component "mtp".
+
+
 Contact
 -------
 
-Until the project has a proper bugtracker please email
-bugs to philschmidt@gmx.net.
+If you want to get in contact with me drop me an email: philschmidt@gmx.net
