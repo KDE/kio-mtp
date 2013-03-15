@@ -81,7 +81,7 @@ MTPSlave::~MTPSlave()
 /**
  * @brief Get's the correct object from the device.
  * @param pathItems A QStringList containing the items of the filepath
- * @return QPair with the object and its device. pair.fist is a nullpointer if the object doesn't exist or for root or, depending on the pathItems size device (1), storage (2) or file (>=3)
+ * @return QPair with the object and its device. pair.first is a nullpointer if the object doesn't exist or for root or, depending on the pathItems size device (1), storage (2) or file (>=3)
  */
 QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
 {
@@ -611,7 +611,7 @@ void MTPSlave::get ( const KUrl& url )
 
         if ( pair.first )
         {
-            LIBMTP_file_t *file = ( LIBMTP_file_t* ) pair.second;
+            LIBMTP_file_t *file = ( LIBMTP_file_t* ) pair.first;
 
             mimeType ( getMimetype ( file->filetype ) );
             totalSize ( file->filesize );
