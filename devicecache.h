@@ -45,7 +45,7 @@ private:
     QString udi;
 
 public:
-    CachedDevice(LIBMTP_mtpdevice_t* device, const QString udi, qint32 timeout);
+    explicit CachedDevice(LIBMTP_mtpdevice_t* device, const QString udi, qint32 timeout);
     virtual ~CachedDevice();
 
     LIBMTP_mtpdevice_t* getDevice();

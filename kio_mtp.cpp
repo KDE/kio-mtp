@@ -58,6 +58,8 @@ int KDE_EXPORT kdemain ( int argc, char **argv )
     
     slave.dispatchLoop();
     
+    kDebug ( KIO_MTP ) << "Slave EventLoop ended";
+    
     return 0;
 }
 
@@ -76,6 +78,7 @@ MTPSlave::MTPSlave ( const QByteArray& pool, const QByteArray& app )
 
 MTPSlave::~MTPSlave()
 {
+    kDebug ( KIO_MTP ) << "Slave destroyed";
 }
 
 /**
@@ -146,7 +149,7 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
 
                     QMap<QString, LIBMTP_file_t*> files = getFiles ( device, parent->storage_id, c_parentID );
                     
-                    for ( QMap<QString, LIBMTP_file_t*>::iterator it = files.begin(); it != files.end(); it++ )
+                    for ( QMap<QString, LIBMTP_file_t*>::iterator it = files.begin(); it != files.end(); ++it )
                     {
                         QString filePath = parentPath;
                         filePath.append( QString::fromUtf8("/") ).append( it.key() );
@@ -354,7 +357,7 @@ void MTPSlave::listDir ( const KUrl& url )
                     files = getFiles( device, parent->storage_id, parent->item_id );
                 }
                 
-                for ( QMap<QString, LIBMTP_file_t*>::iterator it = files.begin(); it != files.end(); it++ )
+                for ( QMap<QString, LIBMTP_file_t*>::iterator it = files.begin(); it != files.end(); ++it )
                 {
                     LIBMTP_file_t *file = it.value();
                     

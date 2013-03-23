@@ -43,7 +43,7 @@ uint16_t dataPut ( void*, void *priv, uint32_t sendlen, unsigned char *data, uin
 /**
  * MTPDataGetFunc callback function, "gets" data and puts it on the device
  */
-uint16_t dataGet ( void*, void *priv, uint32_t, UNUSED unsigned char *data, uint32_t *gotlen )
+uint16_t dataGet ( void*, void *priv, uint32_t, unsigned char *data, uint32_t *gotlen )
 {
     ( ( MTPSlave* ) priv )->dataReq();
 
@@ -51,9 +51,6 @@ uint16_t dataGet ( void*, void *priv, uint32_t, UNUSED unsigned char *data, uint
     *gotlen = ( ( MTPSlave* ) priv )->readData ( buffer );
 
     kDebug(KIO_MTP) << "transferring" << *gotlen << "bytes to data()";
-
-//     data = ( unsigned char* ) malloc( buffer.size() );
-//     memcpy( data, buffer.data(), buffer.size() );
 
     data = ( unsigned char* ) buffer.data();
 

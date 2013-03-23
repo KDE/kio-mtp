@@ -21,12 +21,6 @@
 #ifndef KIO_MTP_HELPERS_H
 #define KIO_MTP_HELPERS_H
 
-#ifdef __GNUC__
-#define UNUSED __attribute__ ((unused))
-#else
-#define UNUSED
-#endif
-
 
 #include "kio_mtp.h"
 
@@ -35,7 +29,7 @@
 
 int dataProgress ( uint64_t const sent, uint64_t const, void const *const priv );
 uint16_t dataPut ( void*, void *priv, uint32_t sendlen, unsigned char *data, uint32_t *putlen );
-uint16_t dataGet ( void*, void *priv, uint32_t, UNUSED unsigned char *data, uint32_t *gotlen );
+uint16_t dataGet ( void*, void *priv, uint32_t, unsigned char *data, uint32_t *gotlen );
 
 QString convertToPath( const QStringList& pathItems, const int elements );
 

@@ -39,13 +39,13 @@ class FileCache : public QObject
 private:
     QHash<QString, QPair<QDateTime, uint32_t> > cache;
 
-private slots:
-    void insertItem( const QString& path, QPair<QDateTime, uint32_t> item );
-    void removeItem( const QString& path );
-
-signals:
-    void s_insertItem( const QString& path, QPair<QDateTime, uint32_t> item );
-    void s_removeItem( const QString& path );
+// private slots:
+//     void insertItem( const QString& path, QPair<QDateTime, uint32_t> item );
+//     void removeItem( const QString& path );
+// 
+// signals:
+//     void s_insertItem( const QString& path, QPair<QDateTime, uint32_t> item );
+//     void s_removeItem( const QString& path );
 
 public:
     explicit FileCache ( QObject* parent = 0 );

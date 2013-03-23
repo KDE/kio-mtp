@@ -26,10 +26,6 @@
 
 FileCache::FileCache ( QObject* parent ) : QObject ( parent )
 {
-    connect ( this, SIGNAL ( s_insertItem ( QString,QPair<QDateTime,uint32_t> ) ),
-              this, SLOT ( insertItem ( QString,QPair<QDateTime,uint32_t> ) ) );
-    connect ( this, SIGNAL ( s_removeItem ( QString ) ),
-              this, SLOT ( removeItem ( QString ) ) );
 }
 
 uint32_t FileCache::queryPath ( const QString& path, int timeToLive )
@@ -50,7 +46,7 @@ uint32_t FileCache::queryPath ( const QString& path, int timeToLive )
             
             kDebug(KIO_MTP) << "Reset item ttl:" << item.first;
 
-            emit ( s_insertItem ( path, item ) );
+            cache.insert ( path, item );
 
             return item.second;
         }
@@ -66,31 +62,19 @@ uint32_t FileCache::queryPath ( const QString& path, int timeToLive )
     return 0;
 }
 
-void FileCache::insertItem ( const QString& path, QPair< QDateTime, uint32_t > item )
-{
-    cache.insert ( path, item );
-    
-    kDebug(KIO_MTP) << "Added " << path << " with ID " << item.second;
-}
-
-void FileCache::removeItem ( const QString& path )
-{
-    cache.remove( path );
-}
-
 void FileCache::addPath ( const QString& path, uint32_t id, int timeToLive )
 {
     QDateTime dateTime = QDateTime::currentDateTime();
     dateTime = dateTime.addSecs ( timeToLive );
 
     QPair< QDateTime, uint32_t > item ( dateTime, id );
-
-    emit ( s_insertItem ( path, item ) );
+    
+    cache.insert ( path, item );
 }
 
 void FileCache::removePath ( const QString& path )
 {
-    emit ( s_removeItem ( path ) );
+    cache.remove( path );
 }
 
 #include "filecache.moc"

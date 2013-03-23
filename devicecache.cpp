@@ -29,7 +29,7 @@
 
 /**
  * Creates a Cached Device that has a predefined lifetime (default: 10000 msec)s
- * The lifetime is reset everytime the device is accessed. After it expires it
+ * The lifetime is reset every time the device is accessed. After it expires it
  * will be released.
  *
  * @param device The LIBMTP_mtpdevice_t pointer to cache
@@ -181,7 +181,13 @@ void DeviceCache::deviceRemoved ( const QString& udi )
 
 DeviceCache::~DeviceCache()
 {
+    processEvents();
+    
     // Release devices
+    foreach ( QString udi, udiCache.keys() )
+    {
+        deviceRemoved( udi );
+    }
 }
 
 QHash<QString, CachedDevice*> DeviceCache::getAll()
