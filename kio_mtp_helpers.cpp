@@ -19,7 +19,6 @@
 
 #include "kio_mtp_helpers.h"
 
-
 int dataProgress ( uint64_t const sent, uint64_t const, void const *const priv )
 {
     ( ( MTPSlave* ) priv )->processedSize ( sent );
@@ -32,7 +31,7 @@ int dataProgress ( uint64_t const sent, uint64_t const, void const *const priv )
  */
 uint16_t dataPut ( void*, void *priv, uint32_t sendlen, unsigned char *data, uint32_t *putlen )
 {
-    kDebug(KIO_MTP) << "transferring" << sendlen << "bytes to data()";
+    qCDebug(LOG_KIO_MTP) << "transferring" << sendlen << "bytes to data()";
 
     ( ( MTPSlave* ) priv )->data ( QByteArray ( ( char* ) data, ( int ) sendlen ) );
     *putlen = sendlen;
@@ -50,7 +49,7 @@ uint16_t dataGet ( void*, void *priv, uint32_t, unsigned char *data, uint32_t *g
     QByteArray buffer;
     *gotlen = ( ( MTPSlave* ) priv )->readData ( buffer );
 
-    kDebug(KIO_MTP) << "transferring" << *gotlen << "bytes to data()";
+    qCDebug(LOG_KIO_MTP) << "transferring" << *gotlen << "bytes to data()";
 
     data = ( unsigned char* ) buffer.data();
 
@@ -330,8 +329,8 @@ LIBMTP_filetype_t getFiletype ( const QString &filename )
 
 QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages ( LIBMTP_mtpdevice_t *&device )
 {
-    kDebug ( KIO_MTP ) << "[ENTER]" << ( device == 0 );
-    
+    qCDebug(LOG_KIO_MTP) << "[ENTER]" << ( device == 0 );
+
     QMap<QString, LIBMTP_devicestorage_t*> storages;
     if ( device )
     {
@@ -339,39 +338,39 @@ QMap<QString, LIBMTP_devicestorage_t*> getDevicestorages ( LIBMTP_mtpdevice_t *&
         {
             //             char *storageIdentifier = storage->VolumeIdentifier;
             char *storageDescription = storage->StorageDescription;
-            
+
             QString storagename;
             //             if ( !storageIdentifier )
             storagename = QString::fromUtf8 ( storageDescription );
             //             else
             //                 storagename = QString::fromUtf8 ( storageIdentifier );
-            
-            kDebug(KIO_MTP) << "found storage" << storagename;
-            
+
+            qCDebug(LOG_KIO_MTP) << "found storage" << storagename;
+
             storages.insert ( storagename, storage );
         }
     }
-    
-    kDebug ( KIO_MTP ) << "[EXIT]" << storages.size();
-    
+
+    qCDebug(LOG_KIO_MTP) << "[EXIT]" << storages.size();
+
     return storages;
 }
 
 QMap<QString, LIBMTP_file_t*> getFiles ( LIBMTP_mtpdevice_t *&device, uint32_t storage_id, uint32_t parent_id )
 {
-    kDebug ( KIO_MTP ) << "getFiles() for parent" << parent_id;
-    
+    qCDebug(LOG_KIO_MTP) << "getFiles() for parent" << parent_id;
+
     QMap<QString, LIBMTP_file_t*> fileMap;
-    
+
     LIBMTP_file_t *files = LIBMTP_Get_Files_And_Folders ( device, storage_id, parent_id ), *file;
     for ( file = files; file != NULL; file = file->next )
     {
         fileMap.insert ( QString::fromUtf8 ( file->filename ), file );
-        //         kDebug(KIO_MTP) << "found file" << file->filename;
+        //         qCDebug(LOG_KIO_MTP) << "found file" << file->filename;
     }
-    
-    kDebug ( KIO_MTP ) << "[EXIT]";
-    
+
+    qCDebug(LOG_KIO_MTP) << "[EXIT]";
+
     return fileMap;
 }
 

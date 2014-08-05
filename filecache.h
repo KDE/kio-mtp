@@ -28,6 +28,10 @@
 #include <QDateTime>
 #include <QHash>
 #include <QPair>
+#include <QLoggingCategory>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_KIO_MTP)
+
 
 /**
  * @class FileCache Implements a time based cache for file ids, mapping their path to their ID. Does _not_ store the device they are on.
@@ -42,7 +46,7 @@ private:
 // private slots:
 //     void insertItem( const QString& path, QPair<QDateTime, uint32_t> item );
 //     void removeItem( const QString& path );
-// 
+//
 // signals:
 //     void s_insertItem( const QString& path, QPair<QDateTime, uint32_t> item );
 //     void s_removeItem( const QString& path );

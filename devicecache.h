@@ -25,12 +25,14 @@
 #include <QTimer>
 #include <QThread>
 #include <QEventLoop>
+#include <QLoggingCategory>
 
 #include <Solid/DeviceNotifier>
 #include <Solid/Device>
 
 #include <libmtp.h>
 
+Q_DECLARE_LOGGING_CATEGORY(LOG_KIO_MTP)
 
 class CachedDevice : public QObject
 {
@@ -66,7 +68,7 @@ private:
      * Fields in order: Devicename (QString), expiration Timer, pointer to device
      */
     QHash< QString, CachedDevice* > nameCache, udiCache;
-    
+
     Solid::DeviceNotifier *notifier;
 
     qint32 timeout;
@@ -80,7 +82,7 @@ public:
      */
 private:
     void checkDevice ( Solid::Device solidDevice );
-    
+
 private slots:
 
     void deviceAdded( const QString &udi );

@@ -21,11 +21,9 @@
 #ifndef KIO_MTP_H
 #define KIO_MTP_H
 
-#include <kdebug.h>
 #include <kio/global.h>
 #include <kio/slavebase.h>
-#include <kurl.h>
-#include <klocale.h>
+#include <KLocalizedString>
 
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -38,11 +36,15 @@
 #include "filecache.h"
 #include "devicecache.h"
 
+#include <QUrl>
+#include <QLoggingCategory>
+
 #define MAX_XFER_BUF_SIZE           16348
 #define KIO_MTP                     7000
 
 using namespace KIO;
 
+Q_DECLARE_LOGGING_CATEGORY(LOG_KIO_MTP)
 
 class MTPSlave : public QObject, public KIO::SlaveBase
 {
@@ -56,13 +58,16 @@ private:
      * @param redirect If udi= should be redirected or just return false
      * @return 0 if valid, 1 if udi and redirected, 2 if udi but invalid device, -1 else
      */
-    int checkUrl( const KUrl& url, bool redirect = true );
+    int checkUrl( const QUrl& url, bool redirect = true );
+    static QString urlDirectory(const QUrl& url, bool appendTrailingSlash = false);
+    static QString urlFileName(const QUrl& url);
+
     FileCache *fileCache;
     DeviceCache *deviceCache;
     QPair<void*, LIBMTP_mtpdevice_t*> getPath( const QString& path );
-    
+
 // private slots:
-//     
+//
 //     void test();
 
 public:
@@ -72,15 +77,15 @@ public:
     MTPSlave ( const QByteArray& pool, const QByteArray& app );
     virtual ~MTPSlave();
 
-    virtual void listDir ( const KUrl& url );
-    virtual void stat ( const KUrl& url );
-    virtual void mimetype ( const KUrl& url );
-    virtual void get ( const KUrl& url );
-    virtual void put ( const KUrl& url, int, JobFlags flags );
-    virtual void copy ( const KUrl& src, const KUrl& dest, int, JobFlags flags );
-    virtual void mkdir ( const KUrl& url, int );
-    virtual void del ( const KUrl& url, bool );
-    virtual void rename ( const KUrl& src, const KUrl& dest, JobFlags flags );
+    virtual void listDir ( const QUrl& url ) Q_DECL_OVERRIDE;
+    virtual void stat ( const QUrl& url ) Q_DECL_OVERRIDE;
+    virtual void mimetype ( const QUrl& url ) Q_DECL_OVERRIDE;
+    virtual void get ( const QUrl& url ) Q_DECL_OVERRIDE;
+    virtual void put ( const QUrl& url, int, JobFlags flags ) Q_DECL_OVERRIDE;
+    virtual void copy ( const QUrl& src, const QUrl& dest, int, JobFlags flags ) Q_DECL_OVERRIDE;
+    virtual void mkdir ( const QUrl& url, int ) Q_DECL_OVERRIDE;
+    virtual void del ( const QUrl& url, bool ) Q_DECL_OVERRIDE;
+    virtual void rename ( const QUrl& src, const QUrl& dest, JobFlags flags ) Q_DECL_OVERRIDE;
 };
 
 #endif  //#endif KIO_MTP_H

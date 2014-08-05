@@ -25,7 +25,9 @@
 #include "kio_mtp.h"
 
 #include <libmtp.h>
+#include <QLoggingCategory>
 
+Q_DECLARE_LOGGING_CATEGORY(LOG_KIO_MTP)
 
 int dataProgress ( uint64_t const sent, uint64_t const, void const *const priv );
 uint16_t dataPut ( void*, void *priv, uint32_t sendlen, unsigned char *data, uint32_t *putlen );

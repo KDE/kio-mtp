@@ -27,6 +27,7 @@
 #include <Solid/GenericInterface>
 #include <Solid/DeviceNotifier>
 
+
 /**
  * Creates a Cached Device that has a predefined lifetime (default: 10000 msec)s
  * The lifetime is reset every time the device is accessed. After it expires it
@@ -50,7 +51,7 @@ CachedDevice::CachedDevice ( LIBMTP_mtpdevice_t* device, const QString udi, qint
     else
         name = QString::fromUtf8 ( deviceName );
 
-    kDebug ( KIO_MTP ) << "Created device " << name << "  with udi=" << udi << " and timeout " << timeout;
+    qCDebug(LOG_KIO_MTP) << "Created device " << name << "  with udi=" << udi << " and timeout " << timeout;
 }
 
 CachedDevice::~CachedDevice()
@@ -76,12 +77,12 @@ const QString CachedDevice::getUdi()
 DeviceCache::DeviceCache ( qint32 timeout, QObject* parent ) : QEventLoop ( parent )
 {
     this->timeout = timeout;
-    
+
     notifier = Solid::DeviceNotifier::instance();
-    
+
     connect( notifier, SIGNAL( deviceAdded( QString ) ), this, SLOT( deviceAdded( QString ) ) );
     connect( notifier, SIGNAL( deviceRemoved(QString) ), this, SLOT( deviceRemoved(QString) ) );
-    
+
     foreach ( Solid::Device solidDevice, Solid::Device::listFromType ( Solid::DeviceInterface::PortableMediaPlayer, QString() ) )
     {
         checkDevice( solidDevice );
@@ -100,7 +101,7 @@ void DeviceCache::checkDevice ( Solid::Device solidDevice )
 
     if ( isMtpDevice == 1 && !udiCache.contains( solidDevice.udi() ) )
     {
-        kDebug ( KIO_MTP ) << "new device, getting raw devices";
+        qCDebug(LOG_KIO_MTP) << "new device, getting raw devices";
 
         LIBMTP_raw_device_t *rawdevices;
         int numrawdevices;
@@ -111,55 +112,55 @@ void DeviceCache::checkDevice ( Solid::Device solidDevice )
         err = LIBMTP_Detect_Raw_Devices ( &rawdevices, &numrawdevices );
         switch ( err )
         {
-            case LIBMTP_ERROR_CONNECTING:
-                kError( KIO_MTP ) << "There has been an error connecting to the devices";
-                break;
-            case LIBMTP_ERROR_MEMORY_ALLOCATION:
-                kError( KIO_MTP ) << "Encountered a Memory Allocation Error";
-                break;
-            case LIBMTP_ERROR_NONE:
+        case LIBMTP_ERROR_CONNECTING:
+            qCWarning(LOG_KIO_MTP) << "There has been an error connecting to the devices";
+            break;
+        case LIBMTP_ERROR_MEMORY_ALLOCATION:
+            qCWarning(LOG_KIO_MTP) << "Encountered a Memory Allocation Error";
+            break;
+        case LIBMTP_ERROR_NONE:
+        {
+            qCDebug(LOG_KIO_MTP) << "No Error, continuing";
+
+            for ( int i = 0; i < numrawdevices; i++ )
             {
-                kDebug( KIO_MTP ) << "No Error, continuing";
+                LIBMTP_raw_device_t* rawDevice = &rawdevices[i];
+                uint32_t rawBusNum = rawDevice->bus_location;
+                uint32_t rawDevNum = rawDevice->devnum;
 
-                for ( int i = 0; i < numrawdevices; i++ )
+                if ( rawBusNum == solidBusNum && rawDevNum == solidDevNum )
                 {
-                    LIBMTP_raw_device_t* rawDevice = &rawdevices[i];
-                    uint32_t rawBusNum = rawDevice->bus_location;
-                    uint32_t rawDevNum = rawDevice->devnum;
+                    qCDebug(LOG_KIO_MTP) << "Found device matching the Solid description";
 
-                    if ( rawBusNum == solidBusNum && rawDevNum == solidDevNum )
+                    LIBMTP_mtpdevice_t *mtpDevice = LIBMTP_Open_Raw_Device_Uncached ( rawDevice );
+
+                    if ( udiCache.find( solidDevice.udi() ) == udiCache.end() )
                     {
-                        kDebug( KIO_MTP ) << "Found device matching the Solid description";
-
-                        LIBMTP_mtpdevice_t *mtpDevice = LIBMTP_Open_Raw_Device_Uncached ( rawDevice );
-                        
-                        if ( udiCache.find( solidDevice.udi() ) == udiCache.end() )
-                        {
-                            CachedDevice *cDev = new CachedDevice( mtpDevice, solidDevice.udi(), timeout );
-                            udiCache.insert( solidDevice.udi(), cDev );
-                            nameCache.insert( cDev->getName(), cDev );
-                            connect( cDev, SIGNAL( expired() ), this, SLOT( releaseDevice() ) );
-                        }
+                        CachedDevice *cDev = new CachedDevice( mtpDevice, solidDevice.udi(), timeout );
+                        udiCache.insert( solidDevice.udi(), cDev );
+                        nameCache.insert( cDev->getName(), cDev );
+                        connect( cDev, SIGNAL( expired() ), this, SLOT( releaseDevice() ) );
                     }
                 }
             }
+        }
+        break;
+        case LIBMTP_ERROR_GENERAL:
+        default:
+            qCWarning(LOG_KIO_MTP) << "Unknown connection error";
             break;
-            case LIBMTP_ERROR_GENERAL:
-            default:
-                kError( KIO_MTP ) << "Unknown connection error";
-                break;
         }
     }
 }
 
 void DeviceCache::deviceAdded ( const QString& udi )
 {
-    kDebug( KIO_MTP ) << "New device attached with udi=" << udi << ". Checking if PortableMediaPlayer...";
+    qCDebug(LOG_KIO_MTP) << "New device attached with udi=" << udi << ". Checking if PortableMediaPlayer...";
 
     Solid::Device device( udi );
     if ( device.isDeviceInterface( Solid::DeviceInterface::PortableMediaPlayer ) )
     {
-        kDebug ( KIO_MTP ) << "SOLID: New Device with udi=" << udi << "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||";
+        qCDebug(LOG_KIO_MTP) << "SOLID: New Device with udi=" << udi << "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||";
 
         checkDevice( device );
     }
@@ -169,10 +170,10 @@ void DeviceCache::deviceRemoved ( const QString& udi )
 {
     if ( udiCache.contains( udi ) )
     {
-        kDebug ( KIO_MTP ) << "SOLID: Device with udi=" << udi << " removed. ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||";
-        
+        qCDebug(LOG_KIO_MTP) << "SOLID: Device with udi=" << udi << " removed. ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||";
+
         CachedDevice *cDev = udiCache.value( udi );
-        
+
         udiCache.remove( cDev->getUdi() );
         nameCache.remove( cDev->getName() );
         delete cDev;
@@ -182,7 +183,7 @@ void DeviceCache::deviceRemoved ( const QString& udi )
 DeviceCache::~DeviceCache()
 {
     processEvents();
-    
+
     // Release devices
     foreach ( QString udi, udiCache.keys() )
     {
@@ -192,7 +193,7 @@ DeviceCache::~DeviceCache()
 
 QHash<QString, CachedDevice*> DeviceCache::getAll()
 {
-    kDebug ( KIO_MTP ) << "getAll()";
+    qCDebug(LOG_KIO_MTP) << "getAll()";
 
     processEvents();
 
@@ -222,7 +223,7 @@ CachedDevice* DeviceCache::get ( const QString& string, bool isUdi )
 int DeviceCache::size()
 {
     processEvents();
-    
+
     return nameCache.size();
 }
 
