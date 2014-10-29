@@ -102,7 +102,7 @@ void DeviceCache::checkDevice ( Solid::Device solidDevice )
     {
         kDebug ( KIO_MTP ) << "new device, getting raw devices";
 
-        LIBMTP_raw_device_t *rawdevices;
+        LIBMTP_raw_device_t *rawdevices = 0;
         int numrawdevices;
         LIBMTP_error_number_t err;
 
@@ -149,6 +149,7 @@ void DeviceCache::checkDevice ( Solid::Device solidDevice )
                 kError( KIO_MTP ) << "Unknown connection error";
                 break;
         }
+        free(rawdevices);
     }
 }
 
