@@ -128,7 +128,7 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
                     ret.first = file;
                     ret.second = device;
 
-                    kDebug(KIO_MTP) << "returning LIBMTP_file_t";
+                    kDebug(KIO_MTP) << "returning LIBMTP_file_t from cache";
 
                     return ret;
                 }
@@ -163,7 +163,7 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
                         ret.first = file;
                         ret.second = device;
 
-                        kDebug(KIO_MTP) << "returning LIBMTP_file_t";
+                        kDebug(KIO_MTP) << "returning LIBMTP_file_t from cached parent" ;
 
                         fileCache->addPath( path, file->item_id );
                     }
@@ -205,7 +205,7 @@ QPair<void*, LIBMTP_mtpdevice_t*> MTPSlave::getPath ( const QString& path )
                 else
                 {
 
-                    kDebug(KIO_MTP) << "returning LIBMTP_file_t";
+                    kDebug(KIO_MTP) << "returning LIBMTP_file_t using tree walk";
 
                     return ret;
                 }
