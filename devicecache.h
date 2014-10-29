@@ -51,9 +51,6 @@ public:
     LIBMTP_mtpdevice_t* getDevice();
     const QString getName();
     const QString getUdi();
-
-// signals:
-//     void expired();
 };
 
 

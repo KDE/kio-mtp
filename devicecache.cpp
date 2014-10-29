@@ -138,7 +138,6 @@ void DeviceCache::checkDevice ( Solid::Device solidDevice )
                             CachedDevice *cDev = new CachedDevice( mtpDevice, solidDevice.udi(), timeout );
                             udiCache.insert( solidDevice.udi(), cDev );
                             nameCache.insert( cDev->getName(), cDev );
-                            connect( cDev, SIGNAL( expired() ), this, SLOT( releaseDevice() ) );
                         }
                     }
                 }
