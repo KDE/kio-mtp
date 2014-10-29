@@ -35,10 +35,11 @@
  * @param device The LIBMTP_mtpdevice_t pointer to cache
  * @param udi The UDI of the new device to cache
  */
-CachedDevice::CachedDevice ( LIBMTP_mtpdevice_t* device, const QString udi, qint32 timeout )
+CachedDevice::CachedDevice ( LIBMTP_mtpdevice_t* device, LIBMTP_raw_device_t* rawdevice, const QString udi, qint32 timeout )
 {
     this->timeout = timeout;
     this->mtpdevice = device;
+    this->rawdevice = *rawdevice;
     this->udi = udi;
 
     char *deviceName = LIBMTP_Get_Friendlyname ( device );
@@ -60,6 +61,14 @@ CachedDevice::~CachedDevice()
 
 LIBMTP_mtpdevice_t* CachedDevice::getDevice()
 {
+    LIBMTP_mtpdevice_t* device = mtpdevice;
+    if (!device->storage)
+    {
+        kDebug ( KIO_MTP ) << "reopen mtpdevice if we have no storage found";
+        LIBMTP_Release_Device ( mtpdevice );
+        mtpdevice = LIBMTP_Open_Raw_Device_Uncached ( &rawdevice );
+    }
+
     return mtpdevice;
 }
 
@@ -135,7 +144,7 @@ void DeviceCache::checkDevice ( Solid::Device solidDevice )
                         
                         if ( udiCache.find( solidDevice.udi() ) == udiCache.end() )
                         {
-                            CachedDevice *cDev = new CachedDevice( mtpDevice, solidDevice.udi(), timeout );
+                            CachedDevice *cDev = new CachedDevice( mtpDevice, rawDevice, solidDevice.udi(), timeout );
                             udiCache.insert( solidDevice.udi(), cDev );
                             nameCache.insert( cDev->getName(), cDev );
                         }

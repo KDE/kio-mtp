@@ -40,12 +40,13 @@ private:
     qint32 timeout;
     QTimer *timer;
     LIBMTP_mtpdevice_t* mtpdevice;
+    LIBMTP_raw_device_t rawdevice;
 
     QString name;
     QString udi;
 
 public:
-    explicit CachedDevice(LIBMTP_mtpdevice_t* device, const QString udi, qint32 timeout);
+    explicit CachedDevice(LIBMTP_mtpdevice_t* device, LIBMTP_raw_device_t* rawdevice, const QString udi, qint32 timeout);
     virtual ~CachedDevice();
 
     LIBMTP_mtpdevice_t* getDevice();
