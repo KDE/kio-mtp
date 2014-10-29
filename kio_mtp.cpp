@@ -332,7 +332,7 @@ void MTPSlave::listDir ( const KUrl& url )
                 }
                 else
                 {
-                    warning( tr("No Storages found. Maybe you need to unlock your device?") );
+                    warning( i18n("No Storages found. Maybe you need to unlock your device?") );
                 }
             }
             // Storage, list files and folders of storage root
