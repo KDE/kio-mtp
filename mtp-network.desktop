@@ -2,6 +2,8 @@
 Icon=multimedia-player
 Name=MTP Devices
 Name[bs]=MTP Devices
+Name[ca]=Dispositius MTP
+Name[ca@valencia]=Dispositius MTP
 Name[cs]=Zařízení MTP
 Name[da]=MTP-enheder
 Name[de]=MTP-Geräte
@@ -14,6 +16,8 @@ Name[ga]=Gléasanna MTP
 Name[gl]=Dispositivos MTP
 Name[hu]=MTP eszközök
 Name[it]=Dispositivi MTP
+Name[ko]=MTP 장치
+Name[lt]=MTP įrenginiai
 Name[mr]=एमटीपी साधने
 Name[nl]=MTP-apparaten
 Name[pl]=Urządzenia MTP
