@@ -39,3 +39,5 @@ install( FILES mtp-network.desktop  DESTINATION  ${DATA_INSTALL_DIR}/konqueror/d
 install( FILES solid_mtp.desktop  DESTINATION  ${DATA_INSTALL_DIR}/solid/actions )
 install( FILES mtp.protocol  DESTINATION  ${SERVICES_INSTALL_DIR} )
 install( FILES mtp-network.desktop  DESTINATION  ${DATA_INSTALL_DIR}/remoteview )
+
+feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
