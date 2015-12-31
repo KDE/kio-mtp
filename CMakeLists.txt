@@ -7,7 +7,7 @@ set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${ECM_KDE_MODULE_DIR} "${CMAKE_CURRENT_
 
 find_package(Qt5 CONFIG REQUIRED COMPONENTS Core)
 
-find_package(Mtp)
+find_package(Mtp REQUIRED)
 find_package(KF5 REQUIRED COMPONENTS
     I18n
     KIO
